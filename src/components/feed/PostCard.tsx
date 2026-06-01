@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import type { Timestamp } from 'firebase/firestore'
 import type { Post, UserProfile } from '@/types'
 
@@ -36,10 +36,21 @@ function timeAgo(ts: Timestamp | null): string {
 
 export default function PostCard({ post, author, isOwn, onEdit, onDelete }: Props) {
   const [imgIdx, setImgIdx] = useState(0)
+  const touchStartX = useRef<number>(0)
   const name = author?.displayName || author?.email || 'Unknown'
   const color = avatarColor(post.userId)
   const abbr = initials(name)
   const urls = post.imageURLs ?? []
+
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    const delta = touchStartX.current - e.changedTouches[0].clientX
+    if (delta > 50 && imgIdx < urls.length - 1) setImgIdx(i => i + 1)
+    if (delta < -50 && imgIdx > 0) setImgIdx(i => i - 1)
+  }
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden border border-gray-100 dark:border-transparent shadow-sm">
@@ -75,7 +86,12 @@ export default function PostCard({ post, author, isOwn, onEdit, onDelete }: Prop
 
       {/* Image carousel */}
       {urls.length > 0 && (
-        <div className="relative bg-black" style={{ aspectRatio: '1/1' }}>
+        <div
+          className="relative bg-black"
+          style={{ aspectRatio: '1/1', touchAction: 'pan-y' }}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
           <img
             src={urls[imgIdx]}
             alt=""
@@ -84,10 +100,16 @@ export default function PostCard({ post, author, isOwn, onEdit, onDelete }: Prop
 
           {urls.length > 1 && (
             <>
+              {/* Counter — visible on all screen sizes */}
+              <div className="absolute top-2 right-2 bg-black/50 text-white text-xs font-medium px-2 py-0.5 rounded-full">
+                {imgIdx + 1}/{urls.length}
+              </div>
+
+              {/* Arrows — desktop only */}
               {imgIdx > 0 && (
                 <button
                   onClick={() => setImgIdx(i => i - 1)}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center transition"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 text-white hidden md:flex items-center justify-center transition"
                 >
                   ‹
                 </button>
@@ -95,11 +117,13 @@ export default function PostCard({ post, author, isOwn, onEdit, onDelete }: Prop
               {imgIdx < urls.length - 1 && (
                 <button
                   onClick={() => setImgIdx(i => i + 1)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center transition"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 text-white hidden md:flex items-center justify-center transition"
                 >
                   ›
                 </button>
               )}
+
+              {/* Dots — visible on all screen sizes */}
               <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5">
                 {urls.map((_, i) => (
                   <button
