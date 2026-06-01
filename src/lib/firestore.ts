@@ -7,13 +7,14 @@ import {
   deleteDoc,
   query,
   where,
+  orderBy,
   getDocs,
   onSnapshot,
   serverTimestamp,
   type Unsubscribe,
 } from 'firebase/firestore'
 import { db } from './firebase'
-import type { Goal, Completion, UserProfile, GoalFrequency } from '@/types'
+import type { Goal, Completion, UserProfile, GoalFrequency, Post } from '@/types'
 
 // ---- Users ----
 
@@ -99,4 +100,35 @@ export async function removeCompletion(userId: string, goalId: string, date: str
   )
   const snap = await getDocs(q)
   await Promise.all(snap.docs.map(d => deleteDoc(d.ref)))
+}
+
+// ---- Posts ----
+
+export function subscribeToPosts(cb: (posts: Post[]) => void): Unsubscribe {
+  const q = query(collection(db, 'posts'), orderBy('createdAt', 'desc'))
+  return onSnapshot(q, snap => {
+    cb(snap.docs.map(d => ({ id: d.id, ...d.data() } as Post)))
+  })
+}
+
+export async function createPost(
+  userId: string,
+  data: { imageURLs: string[]; caption: string },
+): Promise<void> {
+  await addDoc(collection(db, 'posts'), {
+    ...data,
+    userId,
+    createdAt: serverTimestamp(),
+  })
+}
+
+export async function updatePost(
+  postId: string,
+  data: Partial<Pick<Post, 'caption' | 'imageURLs'>>,
+): Promise<void> {
+  await updateDoc(doc(db, 'posts', postId), data)
+}
+
+export async function deletePost(postId: string): Promise<void> {
+  await deleteDoc(doc(db, 'posts', postId))
 }

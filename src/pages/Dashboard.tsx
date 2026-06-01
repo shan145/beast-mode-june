@@ -15,10 +15,11 @@ import GoalForm from '@/components/goals/GoalForm'
 import DailyChecklist from '@/components/checklist/DailyChecklist'
 import JuneCalendar from '@/components/calendar/JuneCalendar'
 import MemberCard from '@/components/community/MemberCard'
+import Feed from '@/components/feed/Feed'
 import NavTabs, { type TabDef } from '@/components/ui/NavTabs'
 import type { Goal } from '@/types'
 
-type Tab = 'today' | 'calendar' | 'community' | 'goals'
+type Tab = 'today' | 'calendar' | 'community' | 'feed' | 'goals'
 
 const TABS: TabDef<Tab>[] = [
   {
@@ -39,6 +40,16 @@ const TABS: TabDef<Tab>[] = [
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="4" width="18" height="18" rx="2" />
         <path d="M16 2v4M8 2v4M3 10h18" />
+      </svg>
+    ),
+  },
+  {
+    id: 'feed',
+    label: 'Feed',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <path d="M3 9h18M9 21V9" />
       </svg>
     ),
   },
@@ -166,6 +177,8 @@ export default function Dashboard() {
                 )}
               </>
             )}
+
+            {tab === 'feed' && <Feed />}
 
             {tab === 'goals' && (
               <>
