@@ -2,8 +2,8 @@ import type { Goal } from '@/types'
 
 interface Props {
   goal: Goal
-  onEdit: () => void
-  onDelete: () => void
+  onEdit?: () => void
+  onDelete?: () => void
 }
 
 export default function GoalCard({ goal, onEdit, onDelete }: Props) {
@@ -25,20 +25,20 @@ export default function GoalCard({ goal, onEdit, onDelete }: Props) {
           {frequency.daysPerWeek} days/week · {frequency.totalDays} day June target
         </p>
       </div>
-      <div className="flex gap-3 shrink-0 mt-0.5">
-        <button
-          onClick={onEdit}
-          className="text-gray-400 hover:text-white text-sm transition"
-        >
-          Edit
-        </button>
-        <button
-          onClick={onDelete}
-          className="text-gray-400 hover:text-red-400 text-sm transition"
-        >
-          Delete
-        </button>
-      </div>
+      {(onEdit || onDelete) && (
+        <div className="flex gap-3 shrink-0 mt-0.5">
+          {onEdit && (
+            <button onClick={onEdit} className="text-gray-400 hover:text-white text-sm transition">
+              Edit
+            </button>
+          )}
+          {onDelete && (
+            <button onClick={onDelete} className="text-gray-400 hover:text-red-400 text-sm transition">
+              Delete
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }

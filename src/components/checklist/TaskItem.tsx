@@ -3,30 +3,31 @@ import type { Goal } from '@/types'
 interface Props {
   goal: Goal
   checked: boolean
-  // for weekly goals
   weekCount?: number
-  // checked but not toggleable (weekly quota met via other days)
   locked?: boolean
-  onToggle: (e: React.MouseEvent<HTMLButtonElement>) => void
+  readOnly?: boolean
+  onToggle?: (e: React.MouseEvent<HTMLButtonElement>) => void
 }
 
-export default function TaskItem({ goal, checked, weekCount, locked, onToggle }: Props) {
+export default function TaskItem({ goal, checked, weekCount, locked, readOnly, onToggle }: Props) {
   const isWeekly = goal.frequency.type === 'weekly'
-  const clickable = !locked
+  const interactive = !locked && !readOnly && !!onToggle
 
   return (
     <div className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-colors ${
       checked ? 'bg-gray-800/60' : 'bg-gray-800'
     }`}>
       <button
-        onClick={clickable ? onToggle : undefined}
-        disabled={!clickable}
+        onClick={interactive ? onToggle : undefined}
+        disabled={!interactive}
         className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
           checked
-            ? locked
+            ? locked || readOnly
               ? 'bg-emerald-600 border-emerald-600 cursor-default'
               : 'bg-orange-500 border-orange-500'
-            : 'border-gray-500 hover:border-orange-400'
+            : readOnly
+              ? 'border-gray-600 cursor-default'
+              : 'border-gray-500 hover:border-orange-400'
         } disabled:cursor-default`}
         aria-label={checked ? 'Mark incomplete' : 'Mark complete'}
       >

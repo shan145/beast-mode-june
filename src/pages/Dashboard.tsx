@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { signOut } from 'firebase/auth'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth, clearGroupAuthed } from '@/hooks/useAuth'
 import { useGoals } from '@/hooks/useGoals'
 import { useCompletions } from '@/hooks/useCompletions'
+import { useUsers } from '@/hooks/useUsers'
 import { deleteGoal } from '@/lib/firestore'
 import { auth } from '@/lib/firebase'
 import { isMobile } from '@/pages/Login'
@@ -11,16 +13,26 @@ import GoalCard from '@/components/goals/GoalCard'
 import GoalForm from '@/components/goals/GoalForm'
 import DailyChecklist from '@/components/checklist/DailyChecklist'
 import JuneCalendar from '@/components/calendar/JuneCalendar'
+import MemberCard from '@/components/community/MemberCard'
 import type { Goal } from '@/types'
 
-type Tab = 'today' | 'calendar' | 'goals'
+type Tab = 'today' | 'calendar' | 'community' | 'goals'
 
 export default function Dashboard() {
   const { firebaseUser } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
   const { goals, loading: goalsLoading } = useGoals(firebaseUser?.uid)
   const { completions, loading: completionsLoading } = useCompletions(firebaseUser?.uid)
+  const { users } = useUsers()
 
-  const [tab, setTab] = useState<Tab>('today')
+  const otherMembers = users
+    .filter(u => u.uid !== firebaseUser?.uid)
+    .sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''))
+
+  const [tab, setTab] = useState<Tab>(
+    (location.state as { tab?: Tab } | null)?.tab ?? 'today'
+  )
   const [showForm, setShowForm] = useState(false)
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
   const [deletingGoal, setDeletingGoal] = useState<Goal | null>(null)
@@ -62,7 +74,7 @@ export default function Dashboard() {
       {/* Tab bar */}
       <div className="border-b border-gray-800 px-6">
         <div className="flex gap-1 max-w-2xl mx-auto">
-          {(['today', 'calendar', 'goals'] as const).map(t => (
+          {(['today', 'calendar', 'community', 'goals'] as const).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -93,6 +105,27 @@ export default function Dashboard() {
 
             {tab === 'calendar' && (
               <JuneCalendar goals={goals} completions={completions} />
+            )}
+
+            {tab === 'community' && (
+              <>
+                <h2 className="text-xl font-semibold mb-4">The Group</h2>
+                {otherMembers.length === 0 ? (
+                  <div className="text-center py-16 text-gray-500">
+                    <p className="text-sm">No other members yet — share the group password to invite friends.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {otherMembers.map(member => (
+                      <MemberCard
+                        key={member.uid}
+                        member={member}
+                        onClick={() => navigate(`/member/${member.uid}`, { state: { from: 'community' } })}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
             )}
 
             {tab === 'goals' && (
