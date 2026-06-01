@@ -24,7 +24,6 @@ export default function Login() {
       done = true
     }
 
-    // Primary: explicit redirect result (mobile) or existing session (both)
     pendingRedirect
       .then(result => {
         if (result?.user && !done) {
@@ -39,8 +38,6 @@ export default function Login() {
         done = true
       })
 
-    // Fallback: catches already-signed-in users and cases where
-    // getRedirectResult returns null but Firebase processed the redirect
     const unsub = onAuthStateChanged(auth, user => {
       if (done) return
       if (user) {
@@ -92,42 +89,42 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-      <div className="bg-gray-900 rounded-2xl p-8 w-full max-w-sm shadow-xl">
-        <h1 className="text-2xl font-bold text-white mb-1">Beast Mode June</h1>
-        <p className="text-gray-400 text-sm mb-8">Track goals. Stay accountable.</p>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 w-full max-w-sm shadow-xl border border-gray-100 dark:border-transparent">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Beast Mode June</h1>
+        <p className="text-gray-500 dark:text-gray-400 text-sm mb-8">Track goals. Stay accountable.</p>
 
         {loading && (
-          <p className="text-gray-400 text-sm text-center">Loading...</p>
+          <p className="text-gray-400 dark:text-gray-500 text-sm text-center">Loading...</p>
         )}
 
         {!loading && step === 'google' && (
           <>
             <button
               onClick={handleGoogleSignIn}
-              className="w-full flex items-center justify-center gap-3 bg-white text-gray-900 font-medium rounded-lg px-4 py-3 hover:bg-gray-100 transition"
+              className="w-full flex items-center justify-center gap-3 bg-white text-gray-900 font-medium rounded-lg px-4 py-3 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 transition"
             >
               <GoogleIcon />
               Sign in with Google
             </button>
-            {error && <p className="mt-3 text-red-400 text-sm">{error}</p>}
+            {error && <p className="mt-3 text-red-500 dark:text-red-400 text-sm">{error}</p>}
           </>
         )}
 
         {step === 'password' && (
           <form onSubmit={handlePasswordSubmit} className="space-y-4">
             <div>
-              <label className="block text-gray-300 text-sm mb-1">Group password</label>
+              <label className="block text-gray-700 dark:text-gray-300 text-sm mb-1">Group password</label>
               <input
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 placeholder="Enter group password"
                 autoFocus
-                className="w-full bg-gray-800 text-white rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500"
+                className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500 placeholder-gray-400 dark:placeholder-gray-600"
               />
             </div>
-            {error && <p className="text-red-400 text-sm">{error}</p>}
+            {error && <p className="text-red-500 dark:text-red-400 text-sm">{error}</p>}
             <button
               type="submit"
               className="w-full bg-orange-500 hover:bg-orange-400 text-white font-semibold rounded-lg px-4 py-3 transition"

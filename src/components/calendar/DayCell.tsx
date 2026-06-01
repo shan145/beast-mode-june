@@ -1,4 +1,5 @@
 import type { CalendarDayData } from '@/hooks/useCalendar'
+import { useTheme } from '@/contexts/ThemeContext'
 
 interface Props {
   day: CalendarDayData | null
@@ -6,6 +7,9 @@ interface Props {
 }
 
 export default function DayCell({ day, goalColors }: Props) {
+  const { theme } = useTheme()
+  const isDark = theme === 'dark'
+
   if (!day) return <div className="rounded-md" />
 
   const showDots = !day.isFuture && !day.allDailyDone && day.dailyGoalStates.length > 0
@@ -14,10 +18,10 @@ export default function DayCell({ day, goalColors }: Props) {
   return (
     <div className={`flex flex-col items-center py-2 px-1 rounded-md transition-colors ${
       day.isFuture
-        ? 'bg-gray-900/40'
+        ? 'bg-gray-100/50 dark:bg-gray-900/40'
         : day.isToday
-          ? 'bg-gray-800'
-          : 'bg-gray-900'
+          ? 'bg-gray-200 dark:bg-gray-800'
+          : 'bg-gray-50 dark:bg-gray-900'
     }`}>
       {/* Day number */}
       <div className={`w-7 h-7 flex items-center justify-center text-xs font-semibold rounded-full leading-none ${
@@ -26,8 +30,8 @@ export default function DayCell({ day, goalColors }: Props) {
           : day.isToday
             ? 'bg-orange-500 text-white'
             : day.isFuture
-              ? 'text-gray-600'
-              : 'text-white'
+              ? 'text-gray-400 dark:text-gray-600'
+              : 'text-gray-900 dark:text-white'
       }`}>
         {day.dayNum}
       </div>
@@ -39,11 +43,15 @@ export default function DayCell({ day, goalColors }: Props) {
             <div
               key={gs.goalId}
               className="w-2 h-2 rounded-full flex-shrink-0"
-              style={{ backgroundColor: gs.complete ? (goalColors[gs.goalId] ?? '#f97316') : '#4b5563' }}
+              style={{
+                backgroundColor: gs.complete
+                  ? (goalColors[gs.goalId] ?? '#f97316')
+                  : (isDark ? '#4b5563' : '#d1d5db'),
+              }}
             />
           ))}
           {day.dailyGoalStates.length > 5 && (
-            <span className="text-gray-500" style={{ fontSize: '8px', lineHeight: '8px' }}>
+            <span className="text-gray-400 dark:text-gray-500" style={{ fontSize: '8px', lineHeight: '8px' }}>
               +{day.dailyGoalStates.length - 5}
             </span>
           )}

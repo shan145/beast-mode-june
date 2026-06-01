@@ -114,10 +114,10 @@ export default function DailyChecklist({ userId, goals, completions, readOnly }:
 
   if (goals.length === 0) {
     return (
-      <div className="text-center py-16 text-gray-500">
-        <p className="text-lg mb-1">No goals yet</p>
+      <div className="text-center py-16 text-gray-400 dark:text-gray-500">
+        <p className="text-lg mb-1 text-gray-500 dark:text-gray-400">No goals yet</p>
         <p className="text-sm">
-          {readOnly ? 'This member hasn\'t added any goals.' : 'Add goals in the Goals tab to start tracking.'}
+          {readOnly ? "This member hasn't added any goals." : 'Add goals in the Goals tab to start tracking.'}
         </p>
       </div>
     )
@@ -127,11 +127,11 @@ export default function DailyChecklist({ userId, goals, completions, readOnly }:
     <div>
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-xl font-semibold text-white">Today</h2>
-          <p className="text-gray-400 text-sm mt-0.5">{label}</p>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Today</h2>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-0.5">{label}</p>
         </div>
         {goals.length > 0 && (
-          <span className={`text-sm font-medium ${allDone ? 'text-emerald-400' : 'text-gray-500'}`}>
+          <span className={`text-sm font-medium ${allDone ? 'text-emerald-500 dark:text-emerald-400' : 'text-gray-400 dark:text-gray-500'}`}>
             {doneCount}/{tasks.length}
           </span>
         )}
@@ -152,12 +152,12 @@ export default function DailyChecklist({ userId, goals, completions, readOnly }:
       </div>
 
       {allDone && (
-        <div className="mt-6 text-center py-4 rounded-xl bg-emerald-900/30 border border-emerald-800/50">
-          <p className="text-emerald-400 font-semibold">
+        <div className="mt-6 text-center py-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800/50">
+          <p className="text-emerald-600 dark:text-emerald-400 font-semibold">
             {readOnly ? 'All done today!' : 'All done for today!'}
           </p>
-          <p className="text-emerald-600 text-sm mt-0.5">
-            {readOnly ? 'They\'re crushing it.' : 'Keep the streak going.'}
+          <p className="text-emerald-500 dark:text-emerald-600 text-sm mt-0.5">
+            {readOnly ? "They're crushing it." : 'Keep the streak going.'}
           </p>
         </div>
       )}

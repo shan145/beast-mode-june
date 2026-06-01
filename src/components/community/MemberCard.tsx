@@ -25,7 +25,7 @@ export default function MemberCard({ member, onClick }: Props) {
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center gap-3 bg-gray-900 hover:bg-gray-800 rounded-xl px-4 py-3 transition-colors text-left"
+      className="w-full flex items-center gap-3 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl px-4 py-3 transition-colors text-left border border-gray-100 dark:border-transparent"
     >
       <div
         className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
@@ -33,10 +33,10 @@ export default function MemberCard({ member, onClick }: Props) {
       >
         {abbr}
       </div>
-      <span className="flex-1 text-white font-medium text-sm">
+      <span className="flex-1 text-gray-900 dark:text-white font-medium text-sm">
         {member.displayName || member.email}
       </span>
-      <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <svg className="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
       </svg>
     </button>
