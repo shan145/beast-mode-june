@@ -8,20 +8,69 @@ import { useUsers } from '@/hooks/useUsers'
 import { deleteGoal } from '@/lib/firestore'
 import { auth } from '@/lib/firebase'
 import { isMobile } from '@/pages/Login'
+import { useTheme } from '@/contexts/ThemeContext'
 
 import GoalCard from '@/components/goals/GoalCard'
 import GoalForm from '@/components/goals/GoalForm'
 import DailyChecklist from '@/components/checklist/DailyChecklist'
 import JuneCalendar from '@/components/calendar/JuneCalendar'
 import MemberCard from '@/components/community/MemberCard'
+import NavTabs, { type TabDef } from '@/components/ui/NavTabs'
 import type { Goal } from '@/types'
 
 type Tab = 'today' | 'calendar' | 'community' | 'goals'
+
+const TABS: TabDef<Tab>[] = [
+  {
+    id: 'today',
+    label: 'Today',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
+        <path d="M13 3H11a2 2 0 00-2 2v0a2 2 0 002 2h2a2 2 0 002-2v0a2 2 0 00-2-2z" />
+        <path d="m9 12 2 2 4-4" />
+      </svg>
+    ),
+  },
+  {
+    id: 'calendar',
+    label: 'Calendar',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="4" width="18" height="18" rx="2" />
+        <path d="M16 2v4M8 2v4M3 10h18" />
+      </svg>
+    ),
+  },
+  {
+    id: 'community',
+    label: 'Group',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+      </svg>
+    ),
+  },
+  {
+    id: 'goals',
+    label: 'Goals',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <circle cx="12" cy="12" r="6" />
+        <circle cx="12" cy="12" r="2" />
+      </svg>
+    ),
+  },
+]
 
 export default function Dashboard() {
   const { firebaseUser } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const { theme, toggle: toggleTheme } = useTheme()
   const { goals, loading: goalsLoading } = useGoals(firebaseUser?.uid)
   const { completions, loading: completionsLoading } = useCompletions(firebaseUser?.uid)
   const { users } = useUsers()
@@ -55,46 +104,36 @@ export default function Dashboard() {
   const loading = goalsLoading || completionsLoading
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
-      <header className="border-b border-gray-800 px-6 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white">
+      <header className="border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex items-center justify-between">
         <h1 className="text-lg font-bold text-orange-500">Beast Mode June</h1>
-        <div className="flex items-center gap-4">
-          <span className="text-gray-400 text-sm hidden sm:block">
-            {firebaseUser?.displayName}
-          </span>
+        <div className="flex items-center gap-3">
+          <span className="text-gray-500 dark:text-gray-400 text-sm hidden sm:block">{firebaseUser?.displayName}</span>
+          <button
+            onClick={toggleTheme}
+            className="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+            aria-label="Toggle theme"
+          >
+            {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+          </button>
           <button
             onClick={handleSignOut}
-            className="text-gray-400 hover:text-white text-sm transition"
+            className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white text-sm transition"
           >
             Sign out
           </button>
         </div>
       </header>
 
-      {/* Tab bar */}
-      <div className="border-b border-gray-800 px-6">
-        <div className="flex gap-1 max-w-2xl mx-auto">
-          {(['today', 'calendar', 'community', 'goals'] as const).map(t => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-4 py-3 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
-                tab === t
-                  ? 'border-orange-500 text-orange-500'
-                  : 'border-transparent text-gray-500 hover:text-gray-300'
-              }`}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-      </div>
+      <NavTabs tabs={TABS} active={tab} onChange={setTab} />
 
-      <main className="max-w-2xl mx-auto px-6 py-8">
+      <main className="max-w-2xl mx-auto px-6 pt-8 pb-28 md:pb-8">
         {loading ? (
-          <p className="text-gray-500 text-sm">Loading...</p>
+          <div className="space-y-3 animate-pulse">
+            {[1, 2, 3].map(i => <div key={i} className="h-14 bg-gray-200 dark:bg-gray-800 rounded-xl" />)}
+          </div>
         ) : (
-          <>
+          <div key={tab} className="tab-fade-in">
             {tab === 'today' && firebaseUser && (
               <DailyChecklist
                 userId={firebaseUser.uid}
@@ -111,7 +150,7 @@ export default function Dashboard() {
               <>
                 <h2 className="text-xl font-semibold mb-4">The Group</h2>
                 {otherMembers.length === 0 ? (
-                  <div className="text-center py-16 text-gray-500">
+                  <div className="text-center py-16 text-gray-400 dark:text-gray-500">
                     <p className="text-sm">No other members yet — share the group password to invite friends.</p>
                   </div>
                 ) : (
@@ -141,8 +180,8 @@ export default function Dashboard() {
                 </div>
 
                 {goals.length === 0 ? (
-                  <div className="text-center py-16 text-gray-500">
-                    <p className="text-lg mb-1">No goals yet</p>
+                  <div className="text-center py-16 text-gray-400 dark:text-gray-500">
+                    <p className="text-lg mb-1 text-gray-500 dark:text-gray-400">No goals yet</p>
                     <p className="text-sm">Add your first goal to get started.</p>
                   </div>
                 ) : (
@@ -159,7 +198,7 @@ export default function Dashboard() {
                 )}
               </>
             )}
-          </>
+          </div>
         )}
       </main>
 
@@ -167,27 +206,22 @@ export default function Dashboard() {
         <GoalForm
           userId={firebaseUser.uid}
           goal={editingGoal ?? undefined}
-          onClose={() => {
-            setShowForm(false)
-            setEditingGoal(null)
-          }}
+          onClose={() => { setShowForm(false); setEditingGoal(null) }}
         />
       )}
 
       {deletingGoal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-sm">
-            <h2 className="text-lg font-semibold text-white mb-2">Delete goal?</h2>
-            <p className="text-gray-400 text-sm mb-1">
-              <span className="text-white font-medium">"{deletingGoal.title}"</span> will be removed.
+        <div className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 w-full max-w-sm shadow-xl border border-gray-100 dark:border-transparent">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Delete goal?</h2>
+            <p className="text-gray-500 dark:text-gray-400 text-sm mb-1">
+              <span className="text-gray-900 dark:text-white font-medium">"{deletingGoal.title}"</span> will be removed.
             </p>
-            <p className="text-red-400 text-sm mb-6">
-              All saved progress on this goal will be lost.
-            </p>
+            <p className="text-red-500 dark:text-red-400 text-sm mb-6">All saved progress on this goal will be lost.</p>
             <div className="flex gap-3">
               <button
                 onClick={() => setDeletingGoal(null)}
-                className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg py-2.5 text-sm transition"
+                className="flex-1 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg py-2.5 text-sm transition"
               >
                 Cancel
               </button>
@@ -203,5 +237,22 @@ export default function Dashboard() {
         </div>
       )}
     </div>
+  )
+}
+
+function SunIcon() {
+  return (
+    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+    </svg>
+  )
+}
+
+function MoonIcon() {
+  return (
+    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+    </svg>
   )
 }

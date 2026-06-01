@@ -56,35 +56,35 @@ export default function GoalForm({ userId, goal, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-md">
-        <h2 className="text-lg font-semibold text-white mb-4">
+    <div className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 w-full max-w-md shadow-xl">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
           {goal ? 'Edit goal' : 'New goal'}
         </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-gray-300 text-sm mb-1">Title</label>
+            <label className="block text-gray-700 dark:text-gray-300 text-sm mb-1">Title</label>
             <input
               value={title}
               onChange={e => setTitle(e.target.value)}
               placeholder="e.g. Run, Gym, Read 30 min"
               required
-              className="w-full bg-gray-800 text-white rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-orange-500"
+              className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-orange-500 placeholder-gray-400 dark:placeholder-gray-600"
             />
           </div>
           <div>
-            <label className="block text-gray-300 text-sm mb-1">
-              Description <span className="text-gray-500">(optional)</span>
+            <label className="block text-gray-700 dark:text-gray-300 text-sm mb-1">
+              Description <span className="text-gray-400 dark:text-gray-500">(optional)</span>
             </label>
             <input
               value={description}
               onChange={e => setDescription(e.target.value)}
               placeholder="Any details"
-              className="w-full bg-gray-800 text-white rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-orange-500"
+              className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-orange-500 placeholder-gray-400 dark:placeholder-gray-600"
             />
           </div>
           <div>
-            <label className="block text-gray-300 text-sm mb-2">Cadence</label>
+            <label className="block text-gray-700 dark:text-gray-300 text-sm mb-2">Cadence</label>
             <div className="flex gap-2">
               {(['daily', 'weekly'] as const).map(t => (
                 <button
@@ -94,14 +94,14 @@ export default function GoalForm({ userId, goal, onClose }: Props) {
                   className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
                     type === t
                       ? 'bg-orange-500 text-white'
-                      : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
                   }`}
                 >
                   {t === 'daily' ? 'Every day' : 'Some days'}
                 </button>
               ))}
             </div>
-            <p className="text-gray-500 text-xs mt-1.5">
+            <p className="text-gray-400 dark:text-gray-500 text-xs mt-1.5">
               {type === 'daily'
                 ? 'Appears on your checklist every day of June'
                 : 'Set how many days per week you aim to do this'}
@@ -110,7 +110,7 @@ export default function GoalForm({ userId, goal, onClose }: Props) {
 
           {type === 'weekly' && (
             <div>
-              <label className="block text-gray-300 text-sm mb-1">Days per week</label>
+              <label className="block text-gray-700 dark:text-gray-300 text-sm mb-1">Days per week</label>
               <input
                 type="number"
                 min={1}
@@ -123,9 +123,9 @@ export default function GoalForm({ userId, goal, onClose }: Props) {
                   if (isNaN(val) || val < 1) setDaysPerWeek('1')
                   else if (val > 7) setDaysPerWeek('7')
                 }}
-                className="w-32 bg-gray-800 text-white rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-orange-500"
+                className="w-32 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-orange-500"
               />
-              <p className="text-gray-500 text-xs mt-1.5">
+              <p className="text-gray-400 dark:text-gray-500 text-xs mt-1.5">
                 1–7 days · entering 7 switches to "Every day"
               </p>
             </div>
@@ -135,7 +135,7 @@ export default function GoalForm({ userId, goal, onClose }: Props) {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg py-2.5 text-sm transition"
+              className="flex-1 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg py-2.5 text-sm transition"
             >
               Cancel
             </button>
