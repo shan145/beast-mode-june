@@ -30,6 +30,12 @@ export function subscribeToUsers(cb: (users: UserProfile[]) => void): Unsubscrib
   })
 }
 
+export function subscribeToUser(uid: string, cb: (user: UserProfile | null) => void): Unsubscribe {
+  return onSnapshot(doc(db, 'users', uid), snap => {
+    cb(snap.exists() ? ({ uid: snap.id, ...snap.data() } as UserProfile) : null)
+  })
+}
+
 // ---- Goals ----
 
 export function subscribeToGoals(userId: string, cb: (goals: Goal[]) => void): Unsubscribe {
