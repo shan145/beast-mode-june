@@ -15,7 +15,7 @@ export default function NavTabs<T extends string>({ tabs, active, onChange }: Pr
     <>
       {/* Desktop: top border tab bar */}
       <div className="hidden md:block border-b border-gray-200 dark:border-gray-800 px-6">
-        <div className="flex gap-1 max-w-2xl mx-auto">
+        <div className="flex gap-1 max-w-2xl mx-auto justify-center">
           {tabs.map(tab => (
             <button
               key={tab.id}

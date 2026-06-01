@@ -32,6 +32,14 @@ export interface Completion {
   completedAt: Timestamp
 }
 
+export interface Post {
+  id: string
+  userId: string
+  imageURLs: string[]
+  caption: string
+  createdAt: Timestamp | null
+}
+
 // Derived type used by the calendar/checklist
 export interface DayState {
   date: string
