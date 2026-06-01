@@ -34,6 +34,6 @@ echo "🔨 Building..."
 npm run build
 
 echo "🚀 Deploying to Firebase Hosting..."
-firebase deploy --only hosting
+firebase deploy 
 
 echo "✅ Done! Your app is live."
