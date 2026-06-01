@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { signInWithPopup, signOut } from 'firebase/auth'
+import { useState, useEffect } from 'react'
+import { signInWithRedirect, signOut, onAuthStateChanged } from 'firebase/auth'
 import { useNavigate } from 'react-router-dom'
 import { auth, googleProvider } from '@/lib/firebase'
 import { GROUP_PASSWORD, setGroupAuthed } from '@/hooks/useAuth'
@@ -9,26 +9,32 @@ export default function Login() {
   const [step, setStep] = useState<'google' | 'password'>('google')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
 
-  async function handleGoogleSignIn() {
-    setLoading(true)
-    setError('')
-    try {
-      const result = await signInWithPopup(auth, googleProvider)
-      await upsertUser({
-        uid: result.user.uid,
-        email: result.user.email ?? '',
-        displayName: result.user.displayName ?? '',
-        photoURL: result.user.photoURL ?? '',
-      })
-      setStep('password')
-    } catch {
-      setError('Sign-in failed. Try again.')
-    } finally {
-      setLoading(false)
-    }
+  useEffect(() => {
+    return onAuthStateChanged(auth, async user => {
+      try {
+        if (user) {
+          await upsertUser({
+            uid: user.uid,
+            email: user.email ?? '',
+            displayName: user.displayName ?? '',
+            photoURL: user.photoURL ?? '',
+          })
+          setStep('password')
+        }
+      } catch (err: unknown) {
+        console.error('auth state error:', err)
+        setError('Failed to complete sign-in. Check Firestore is enabled.')
+      } finally {
+        setLoading(false)
+      }
+    })
+  }, [])
+
+  function handleGoogleSignIn() {
+    signInWithRedirect(auth, googleProvider)
   }
 
   async function handlePasswordSubmit(e: React.FormEvent) {
@@ -50,15 +56,17 @@ export default function Login() {
         <h1 className="text-2xl font-bold text-white mb-1">Beast Mode June</h1>
         <p className="text-gray-400 text-sm mb-8">Track goals. Stay accountable.</p>
 
-        {step === 'google' && (
+        {loading && (
+          <p className="text-gray-400 text-sm text-center">Loading...</p>
+        )}
+        {!loading && step === 'google' && (
           <>
             <button
               onClick={handleGoogleSignIn}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-3 bg-white text-gray-900 font-medium rounded-lg px-4 py-3 hover:bg-gray-100 transition disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-3 bg-white text-gray-900 font-medium rounded-lg px-4 py-3 hover:bg-gray-100 transition"
             >
               <GoogleIcon />
-              {loading ? 'Signing in...' : 'Sign in with Google'}
+              Sign in with Google
             </button>
             {error && <p className="mt-3 text-red-400 text-sm">{error}</p>}
           </>
