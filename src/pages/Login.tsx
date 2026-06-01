@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
-import { signInWithRedirect, signOut, onAuthStateChanged } from 'firebase/auth'
+import { signInWithPopup, signInWithRedirect, onAuthStateChanged } from 'firebase/auth'
 import { useNavigate } from 'react-router-dom'
-import { auth, googleProvider } from '@/lib/firebase'
+import { auth, googleProvider, pendingRedirect } from '@/lib/firebase'
 import { GROUP_PASSWORD, setGroupAuthed } from '@/hooks/useAuth'
 import { upsertUser } from '@/lib/firestore'
+
+export const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
 
 export default function Login() {
   const [step, setStep] = useState<'google' | 'password'>('google')
@@ -13,39 +15,78 @@ export default function Login() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    return onAuthStateChanged(auth, async user => {
-      try {
-        if (user) {
-          await upsertUser({
-            uid: user.uid,
-            email: user.email ?? '',
-            displayName: user.displayName ?? '',
-            photoURL: user.photoURL ?? '',
-          })
-          setStep('password')
+    let done = false
+
+    async function processUser(uid: string, email: string, displayName: string, photoURL: string) {
+      await upsertUser({ uid, email, displayName, photoURL })
+      setStep('password')
+      setLoading(false)
+      done = true
+    }
+
+    // Primary: explicit redirect result (mobile) or existing session (both)
+    pendingRedirect
+      .then(result => {
+        if (result?.user && !done) {
+          const { uid, email, displayName, photoURL } = result.user
+          return processUser(uid, email ?? '', displayName ?? '', photoURL ?? '')
         }
-      } catch (err: unknown) {
-        console.error('auth state error:', err)
-        setError('Failed to complete sign-in. Check Firestore is enabled.')
-      } finally {
+      })
+      .catch(err => {
+        console.error('redirect error:', err)
+        setError('Sign-in failed. Try again.')
         setLoading(false)
+        done = true
+      })
+
+    // Fallback: catches already-signed-in users and cases where
+    // getRedirectResult returns null but Firebase processed the redirect
+    const unsub = onAuthStateChanged(auth, user => {
+      if (done) return
+      if (user) {
+        processUser(user.uid, user.email ?? '', user.displayName ?? '', user.photoURL ?? '')
+      } else {
+        pendingRedirect.then(r => {
+          if (!r && !done) setLoading(false)
+        })
       }
     })
+
+    return unsub
   }, [])
 
-  function handleGoogleSignIn() {
-    signInWithRedirect(auth, googleProvider)
+  async function handleGoogleSignIn() {
+    setError('')
+    if (isMobile) {
+      signInWithRedirect(auth, googleProvider)
+      return
+    }
+    setLoading(true)
+    try {
+      const result = await signInWithPopup(auth, googleProvider)
+      await upsertUser({
+        uid: result.user.uid,
+        email: result.user.email ?? '',
+        displayName: result.user.displayName ?? '',
+        photoURL: result.user.photoURL ?? '',
+      })
+      setStep('password')
+    } catch (err: unknown) {
+      const code = (err as { code?: string })?.code
+      console.error('sign-in error:', err)
+      setError(`Sign-in failed: ${code ?? 'unknown'}`)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  async function handlePasswordSubmit(e: React.FormEvent) {
+  function handlePasswordSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (password === GROUP_PASSWORD) {
       setGroupAuthed()
       navigate('/')
     } else {
       setError('Wrong password. Ask the group for access.')
-      await signOut(auth)
-      setStep('google')
       setPassword('')
     }
   }
@@ -59,6 +100,7 @@ export default function Login() {
         {loading && (
           <p className="text-gray-400 text-sm text-center">Loading...</p>
         )}
+
         {!loading && step === 'google' && (
           <>
             <button
