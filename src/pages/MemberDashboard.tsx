@@ -78,7 +78,7 @@ export default function MemberDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white">
-      <header className="border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex items-center gap-3">
+      <header className="border-b border-gray-200 dark:border-gray-800 px-6 pb-4 flex items-center gap-3" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1rem)' }}>
         <button
           onClick={() => navigate(-1)}
           className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition flex items-center gap-1.5 text-sm shrink-0"
