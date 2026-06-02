@@ -5,6 +5,8 @@ import { useAuth, clearGroupAuthed } from '@/hooks/useAuth'
 import { useGoals } from '@/hooks/useGoals'
 import { useCompletions } from '@/hooks/useCompletions'
 import { useUsers } from '@/hooks/useUsers'
+import { useAllGoals } from '@/hooks/useAllGoals'
+import { useAllCompletions } from '@/hooks/useAllCompletions'
 import { deleteGoal } from '@/lib/firestore'
 import { auth } from '@/lib/firebase'
 import { isMobile } from '@/pages/Login'
@@ -15,6 +17,7 @@ import GoalForm from '@/components/goals/GoalForm'
 import DailyChecklist from '@/components/checklist/DailyChecklist'
 import JuneCalendar from '@/components/calendar/JuneCalendar'
 import MemberCard from '@/components/community/MemberCard'
+import Leaderboard from '@/components/community/Leaderboard'
 import Feed from '@/components/feed/Feed'
 import NavTabs, { type TabDef } from '@/components/ui/NavTabs'
 import type { Goal } from '@/types'
@@ -85,6 +88,8 @@ export default function Dashboard() {
   const { goals, loading: goalsLoading } = useGoals(firebaseUser?.uid)
   const { completions, loading: completionsLoading } = useCompletions(firebaseUser?.uid)
   const { users } = useUsers()
+  const { goals: allGoals } = useAllGoals()
+  const { completions: allCompletions } = useAllCompletions()
 
   const sortedMembers = [...users].sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''))
 
@@ -158,31 +163,49 @@ export default function Dashboard() {
             )}
 
             {tab === 'calendar' && (
-              <JuneCalendar goals={goals} completions={completions} />
+              <JuneCalendar goals={goals} completions={completions} userId={firebaseUser?.uid} />
             )}
 
             {tab === 'community' && (
               <>
                 <h2 className="text-xl font-semibold mb-4">The Group</h2>
+
+                {/* Leaderboard */}
+                {users.length > 1 && (
+                  <Leaderboard
+                    users={users}
+                    allGoals={allGoals}
+                    allCompletions={allCompletions}
+                    currentUserId={firebaseUser?.uid}
+                    onMemberClick={uid => {
+                      navigate('/', { replace: true, state: { tab } })
+                      navigate(`/member/${uid}`)
+                    }}
+                  />
+                )}
+
+                {/* Members list */}
                 {sortedMembers.length === 0 ? (
                   <div className="text-center py-16 text-gray-400 dark:text-gray-500">
                     <p className="text-sm">No members yet — share the group password to invite friends.</p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    {sortedMembers.map(member => (
-                      <MemberCard
-                        key={member.uid}
-                        member={member}
-                        isYou={member.uid === firebaseUser?.uid}
-                        onClick={() => {
-                          // Stamp current tab onto this history entry so navigate(-1) restores it
-                          navigate('/', { replace: true, state: { tab } })
-                          navigate(`/member/${member.uid}`)
-                        }}
-                      />
-                    ))}
-                  </div>
+                  <>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">Members</p>
+                    <div className="space-y-2">
+                      {sortedMembers.map(member => (
+                        <MemberCard
+                          key={member.uid}
+                          member={member}
+                          isYou={member.uid === firebaseUser?.uid}
+                          onClick={() => {
+                            navigate('/', { replace: true, state: { tab } })
+                            navigate(`/member/${member.uid}`)
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </>
                 )}
               </>
             )}

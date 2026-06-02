@@ -30,3 +30,8 @@ html {
 .tab-fade-in {
   animation: tabFadeIn 0.18s ease-out;
 }
+
+@keyframes shrinkWidth {
+  from { width: 100%; }
+  to { width: 0%; }
+}
