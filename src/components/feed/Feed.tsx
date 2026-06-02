@@ -13,6 +13,7 @@ export default function Feed() {
   const { users } = useUsers()
   const [showForm, setShowForm] = useState(false)
   const [editingPost, setEditingPost] = useState<Post | null>(null)
+  const [showBanner, setShowBanner] = useState(true)
   const [deletingPost, setDeletingPost] = useState<Post | null>(null)
   const [deleting, setDeleting] = useState(false)
 
@@ -28,6 +29,14 @@ export default function Feed() {
 
   return (
     <>
+      {showBanner && (
+        <div className="flex items-start gap-3 bg-yellow-50 dark:bg-yellow-950/40 border border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-300 rounded-xl px-4 py-3 mb-5 text-sm">
+          <span className="mt-0.5">⚠️</span>
+          <p className="flex-1"><span className="font-semibold">Photo uploads are temporarily broken.</span> We're working on a fix.</p>
+          <button onClick={() => setShowBanner(false)} className="shrink-0 text-yellow-500 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-200 transition text-lg leading-none">✕</button>
+        </div>
+      )}
+
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold">Feed</h2>
         <button
