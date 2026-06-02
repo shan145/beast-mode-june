@@ -5,6 +5,7 @@ import {
   setDoc,
   updateDoc,
   deleteDoc,
+  getDoc,
   query,
   where,
   orderBy,
@@ -19,10 +20,17 @@ import type { Goal, Completion, UserProfile, GoalFrequency, Post, Comment, React
 // ---- Users ----
 
 export async function upsertUser(profile: Omit<UserProfile, 'joinedAt'>) {
-  await setDoc(doc(db, 'users', profile.uid), {
-    ...profile,
-    joinedAt: serverTimestamp(),
-  }, { merge: true })
+  const userRef = doc(db, 'users', profile.uid)
+  const snap = await getDoc(userRef)
+  // Never overwrite a custom displayName the user may have set
+  const data = snap.exists()
+    ? { email: profile.email, photoURL: profile.photoURL, joinedAt: serverTimestamp() }
+    : { ...profile, joinedAt: serverTimestamp() }
+  await setDoc(userRef, data, { merge: true })
+}
+
+export async function updateUserDisplayName(uid: string, displayName: string): Promise<void> {
+  await updateDoc(doc(db, 'users', uid), { displayName: displayName.trim() })
 }
 
 export function subscribeToUsers(cb: (users: UserProfile[]) => void): Unsubscribe {
