@@ -94,13 +94,23 @@ export default function Dashboard() {
   const sortedMembers = [...users].sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''))
 
   const [tab, setTab] = useState<Tab>(
-    (location.state as { tab?: Tab } | null)?.tab ?? 'feed'
+    (location.state as { tab?: Tab } | null)?.tab
+      ?? (sessionStorage.getItem('activeTab') as Tab | null)
+      ?? 'today'
   )
 
-  // Restore tab when navigating back from a member page
+  // Persist active tab so refresh stays on the same tab
+  useEffect(() => {
+    sessionStorage.setItem('activeTab', tab)
+  }, [tab])
+
+  // Restore tab when navigating back from a member page, then clear state so refresh uses sessionStorage instead
   useEffect(() => {
     const stateTab = (location.state as { tab?: Tab } | null)?.tab
-    if (stateTab) setTab(stateTab)
+    if (stateTab) {
+      setTab(stateTab)
+      window.history.replaceState({}, '', '/')
+    }
   }, [location.state])
   const [showForm, setShowForm] = useState(false)
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null)

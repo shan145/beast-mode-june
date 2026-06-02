@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import type { Timestamp } from 'firebase/firestore'
 import type { Post, UserProfile } from '@/types'
 import CommentSection from './CommentSection'
@@ -42,6 +42,13 @@ export default function PostCard({ post, author, isOwn, currentUserId, userMap, 
   const [imgIdx, setImgIdx] = useState(0)
   const [dragOffset, setDragOffset] = useState(0)
   const touchStartX = useRef(0)
+  const didDrag = useRef(false)
+
+  const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [lightboxIdx, setLightboxIdx] = useState(0)
+  const lbTouchStartX = useRef(0)
+  const lbDidDrag = useRef(false)
+
   const name = author?.displayName || author?.email || 'Unknown'
   const color = avatarColor(post.userId)
   const abbr = initials(name)
@@ -50,11 +57,12 @@ export default function PostCard({ post, author, isOwn, currentUserId, userMap, 
 
   function handleTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0].clientX
+    didDrag.current = false
   }
 
   function handleTouchMove(e: React.TouchEvent) {
     const delta = e.touches[0].clientX - touchStartX.current
-    // Apply resistance at edges so it doesn't fly off into nothing
+    if (Math.abs(delta) > 8) didDrag.current = true
     const atStart = imgIdx === 0 && delta > 0
     const atEnd = imgIdx === n - 1 && delta < 0
     setDragOffset(atStart || atEnd ? delta * 0.25 : delta)
@@ -62,10 +70,48 @@ export default function PostCard({ post, author, isOwn, currentUserId, userMap, 
 
   function handleTouchEnd(e: React.TouchEvent) {
     const delta = e.changedTouches[0].clientX - touchStartX.current
-    if (delta < -50 && imgIdx < n - 1) setImgIdx(i => i + 1)
-    else if (delta > 50 && imgIdx > 0) setImgIdx(i => i - 1)
+    if (!didDrag.current) {
+      openLightbox(imgIdx)
+    } else if (delta < -50 && imgIdx < n - 1) {
+      setImgIdx(i => i + 1)
+    } else if (delta > 50 && imgIdx > 0) {
+      setImgIdx(i => i - 1)
+    }
     setDragOffset(0)
   }
+
+  function openLightbox(idx: number) {
+    setLightboxIdx(idx)
+    setLightboxOpen(true)
+  }
+
+  function handleLbTouchStart(e: React.TouchEvent) {
+    lbTouchStartX.current = e.touches[0].clientX
+    lbDidDrag.current = false
+  }
+
+  function handleLbTouchMove(e: React.TouchEvent) {
+    const delta = e.touches[0].clientX - lbTouchStartX.current
+    if (Math.abs(delta) > 8) lbDidDrag.current = true
+  }
+
+  function handleLbTouchEnd(e: React.TouchEvent) {
+    if (!lbDidDrag.current) return
+    const delta = e.changedTouches[0].clientX - lbTouchStartX.current
+    if (delta < -50 && lightboxIdx < n - 1) setLightboxIdx(i => i + 1)
+    else if (delta > 50 && lightboxIdx > 0) setLightboxIdx(i => i - 1)
+  }
+
+  useEffect(() => {
+    if (!lightboxOpen) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setLightboxOpen(false)
+      if (e.key === 'ArrowRight' && lightboxIdx < n - 1) setLightboxIdx(i => i + 1)
+      if (e.key === 'ArrowLeft' && lightboxIdx > 0) setLightboxIdx(i => i - 1)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [lightboxOpen, lightboxIdx, n])
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden border border-gray-100 dark:border-transparent shadow-sm">
@@ -102,11 +148,12 @@ export default function PostCard({ post, author, isOwn, currentUserId, userMap, 
       {/* Image carousel */}
       {urls.length > 0 && (
         <div
-          className="relative bg-black overflow-hidden"
+          className="relative bg-black overflow-hidden cursor-pointer"
           style={{ aspectRatio: '1/1', touchAction: 'pan-y' }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
+          onClick={() => { if (!didDrag.current) openLightbox(imgIdx) }}
         >
           {/* Sliding strip — all images laid out side-by-side */}
           <div
@@ -135,7 +182,7 @@ export default function PostCard({ post, author, isOwn, currentUserId, userMap, 
               {/* Arrows — desktop only */}
               {imgIdx > 0 && (
                 <button
-                  onClick={() => setImgIdx(i => i - 1)}
+                  onClick={e => { e.stopPropagation(); setImgIdx(i => i - 1) }}
                   className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 text-white hidden md:flex items-center justify-center transition"
                 >
                   ‹
@@ -143,7 +190,7 @@ export default function PostCard({ post, author, isOwn, currentUserId, userMap, 
               )}
               {imgIdx < urls.length - 1 && (
                 <button
-                  onClick={() => setImgIdx(i => i + 1)}
+                  onClick={e => { e.stopPropagation(); setImgIdx(i => i + 1) }}
                   className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 text-white hidden md:flex items-center justify-center transition"
                 >
                   ›
@@ -172,13 +219,75 @@ export default function PostCard({ post, author, isOwn, currentUserId, userMap, 
         </div>
       )}
 
-      <ReactionBar postId={post.id} currentUserId={currentUserId} />
+      <ReactionBar postId={post.id} currentUserId={currentUserId} userMap={userMap} />
 
       <CommentSection
         postId={post.id}
         currentUserId={currentUserId}
         userMap={userMap}
       />
+
+      {/* Lightbox */}
+      {lightboxOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black flex items-center justify-center"
+          onClick={() => setLightboxOpen(false)}
+          onTouchStart={handleLbTouchStart}
+          onTouchMove={handleLbTouchMove}
+          onTouchEnd={handleLbTouchEnd}
+        >
+          {/* Close */}
+          <button
+            onClick={e => { e.stopPropagation(); setLightboxOpen(false) }}
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition z-10"
+            style={{ paddingTop: 'env(safe-area-inset-top)' }}
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+
+          {/* Image */}
+          <img
+            src={urls[lightboxIdx]}
+            alt=""
+            className="max-w-full max-h-full object-contain select-none"
+            onClick={e => e.stopPropagation()}
+            draggable={false}
+          />
+
+          {/* Desktop arrows */}
+          {lightboxIdx > 0 && (
+            <button
+              onClick={e => { e.stopPropagation(); setLightboxIdx(i => i - 1) }}
+              className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white text-xl flex items-center justify-center transition hidden md:flex"
+            >
+              ‹
+            </button>
+          )}
+          {lightboxIdx < n - 1 && (
+            <button
+              onClick={e => { e.stopPropagation(); setLightboxIdx(i => i + 1) }}
+              className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white text-xl flex items-center justify-center transition hidden md:flex"
+            >
+              ›
+            </button>
+          )}
+
+          {/* Dots */}
+          {n > 1 && (
+            <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-2">
+              {urls.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={e => { e.stopPropagation(); setLightboxIdx(i) }}
+                  className={`w-2 h-2 rounded-full transition-colors ${i === lightboxIdx ? 'bg-white' : 'bg-white/30'}`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

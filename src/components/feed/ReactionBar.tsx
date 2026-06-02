@@ -1,15 +1,16 @@
 import { useState, useEffect, useRef } from 'react'
-import type { Reaction } from '@/types'
+import type { Reaction, UserProfile } from '@/types'
 import { subscribeToReactions, toggleReaction } from '@/lib/firestore'
 
 interface Props {
   postId: string
   currentUserId: string
+  userMap: Record<string, UserProfile>
 }
 
 const QUICK_EMOJIS = ['👍', '❤️', '🔥', '🎉', '😂', '💀']
 
-export default function ReactionBar({ postId, currentUserId }: Props) {
+export default function ReactionBar({ postId, currentUserId, userMap }: Props) {
   const [reactions, setReactions] = useState<Reaction[]>([])
   const [open, setOpen] = useState(false)
   const trayRef = useRef<HTMLDivElement>(null)
@@ -34,9 +35,13 @@ export default function ReactionBar({ postId, currentUserId }: Props) {
     }
   }, [open])
 
-  const groups = reactions.reduce<Record<string, { count: number; isMine: boolean }>>((acc, r) => {
-    if (!acc[r.emoji]) acc[r.emoji] = { count: 0, isMine: false }
+  const [hoveredEmoji, setHoveredEmoji] = useState<string | null>(null)
+  const [tooltipAnchor, setTooltipAnchor] = useState<{ x: number; y: number } | null>(null)
+
+  const groups = reactions.reduce<Record<string, { count: number; isMine: boolean; uids: string[] }>>((acc, r) => {
+    if (!acc[r.emoji]) acc[r.emoji] = { count: 0, isMine: false, uids: [] }
     acc[r.emoji].count++
+    acc[r.emoji].uids.push(r.userId)
     if (r.userId === currentUserId) acc[r.emoji].isMine = true
     return acc
   }, {})
@@ -77,6 +82,12 @@ export default function ReactionBar({ postId, currentUserId }: Props) {
         <button
           key={emoji}
           onClick={() => toggleReaction(currentUserId, postId, emoji)}
+          onMouseEnter={e => {
+            const rect = e.currentTarget.getBoundingClientRect()
+            setHoveredEmoji(emoji)
+            setTooltipAnchor({ x: rect.left + rect.width / 2, y: rect.top })
+          }}
+          onMouseLeave={() => { setHoveredEmoji(null); setTooltipAnchor(null) }}
           className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-sm border transition
             ${isMine
               ? 'bg-orange-50 dark:bg-orange-950 border-orange-300 dark:border-orange-700'
@@ -89,6 +100,23 @@ export default function ReactionBar({ postId, currentUserId }: Props) {
           </span>
         </button>
       ))}
+
+      {/* Fixed-position tooltip — escapes overflow:hidden on PostCard */}
+      {hoveredEmoji && tooltipAnchor && groups[hoveredEmoji] && (
+        <div
+          className="pointer-events-none z-50"
+          style={{ position: 'fixed', left: tooltipAnchor.x, top: tooltipAnchor.y - 8, transform: 'translate(-50%, -100%)' }}
+        >
+          <div className="bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg px-2.5 py-1.5 shadow-lg max-w-[200px] text-center leading-relaxed">
+            {groups[hoveredEmoji].uids.map(uid =>
+              uid === currentUserId ? 'You' : (userMap[uid]?.displayName || 'Someone')
+            ).join(', ')}
+          </div>
+          <div className="flex justify-center">
+            <div className="border-4 border-transparent border-t-gray-900 dark:border-t-gray-700" />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

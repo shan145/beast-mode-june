@@ -5,13 +5,14 @@ import type { Goal, Completion } from '@/types'
 
 interface Props {
   date: string
-  userId: string
+  userId?: string
   goals: Goal[]
   completions: Completion[]
   onClose: () => void
+  readOnly?: boolean
 }
 
-export default function DayLogModal({ date, userId, goals, completions, onClose }: Props) {
+export default function DayLogModal({ date, userId, goals, completions, onClose, readOnly }: Props) {
   // Local copy for optimistic UI — stays snappy without waiting for Firestore round-trip
   const [local, setLocal] = useState<Completion[]>(completions)
 
@@ -34,6 +35,7 @@ export default function DayLogModal({ date, userId, goals, completions, onClose 
   }
 
   async function handleToggle(goalId: string) {
+    if (readOnly || !userId) return
     if (isDone(goalId)) {
       setLocal(prev => prev.filter(c => !(c.goalId === goalId && c.date === date)))
       await removeCompletion(userId, goalId, date)
@@ -53,7 +55,9 @@ export default function DayLogModal({ date, userId, goals, completions, onClose 
         <div className="flex items-start justify-between px-5 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
           <div>
             <h2 className="font-semibold text-gray-900 dark:text-white">{label}</h2>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Tap goals to log or remove completions</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+              {readOnly ? 'View only' : 'Tap goals to log or remove completions'}
+            </p>
           </div>
           <button
             onClick={onClose}
@@ -83,6 +87,7 @@ export default function DayLogModal({ date, userId, goals, completions, onClose 
                     title={goal.title}
                     checked={isDone(goal.id)}
                     sublabel="every day"
+                    readOnly={readOnly}
                     onToggle={() => handleToggle(goal.id)}
                   />
                 ))}
@@ -102,6 +107,7 @@ export default function DayLogModal({ date, userId, goals, completions, onClose 
                     title={goal.title}
                     checked={isDone(goal.id)}
                     sublabel={`${weekCount(goal.id)}/${goal.frequency.daysPerWeek} this week`}
+                    readOnly={readOnly}
                     onToggle={() => handleToggle(goal.id)}
                   />
                 ))}
@@ -129,15 +135,17 @@ interface TaskRowProps {
   checked: boolean
   sublabel: string
   onToggle: () => void
+  readOnly?: boolean
 }
 
-function TaskRow({ title, checked, sublabel, onToggle }: TaskRowProps) {
+function TaskRow({ title, checked, sublabel, onToggle, readOnly }: TaskRowProps) {
+  const Elem = readOnly ? 'div' : 'button'
   return (
-    <button
-      onClick={onToggle}
-      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-left ${
-        checked ? 'bg-gray-100/60 dark:bg-gray-800/60' : 'bg-gray-100 dark:bg-gray-800'
-      }`}
+    <Elem
+      {...(!readOnly && { onClick: onToggle })}
+      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left ${
+        readOnly ? '' : 'transition-colors'
+      } ${checked ? 'bg-gray-100/60 dark:bg-gray-800/60' : 'bg-gray-100 dark:bg-gray-800'}`}
     >
       <div className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
         checked ? 'bg-orange-500 border-orange-500' : 'border-gray-400 dark:border-gray-500'
@@ -154,6 +162,6 @@ function TaskRow({ title, checked, sublabel, onToggle }: TaskRowProps) {
         {title}
       </span>
       <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">{sublabel}</span>
-    </button>
+    </Elem>
   )
 }

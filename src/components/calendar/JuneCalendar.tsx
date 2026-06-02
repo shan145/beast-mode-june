@@ -15,10 +15,11 @@ const PALETTE = [
 interface Props {
   goals: Goal[]
   completions: Completion[]
-  userId?: string   // if provided, past day cells are clickable for retroactive logging
+  userId?: string   // if provided, past day cells are clickable
+  readOnly?: boolean // if true, clicking shows a view-only modal (no edits)
 }
 
-export default function JuneCalendar({ goals, completions, userId }: Props) {
+export default function JuneCalendar({ goals, completions, userId, readOnly }: Props) {
   const { weeks } = useCalendar(goals, completions)
   const { theme } = useTheme()
   const isDark = theme === 'dark'
@@ -34,7 +35,7 @@ export default function JuneCalendar({ goals, completions, userId }: Props) {
   const weeklyGoals = sortedGoals.filter(g => g.frequency.type === 'weekly')
 
   function handleDayClick(date: string) {
-    if (!userId) return
+    if (!userId && !readOnly) return
     setLogDate(date)
   }
 
@@ -59,14 +60,14 @@ export default function JuneCalendar({ goals, completions, userId }: Props) {
               key={i}
               week={week}
               goalColors={goalColors}
-              onDayClick={userId ? handleDayClick : undefined}
+              onDayClick={(userId || readOnly) ? handleDayClick : undefined}
             />
           ))}
         </div>
 
-        {userId && (
+        {(userId || readOnly) && (
           <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-3">
-            Tap any past day to log completions
+            {readOnly ? 'Tap any past day to view completions' : 'Tap any past day to log completions'}
           </p>
         )}
 
@@ -155,12 +156,13 @@ export default function JuneCalendar({ goals, completions, userId }: Props) {
         )}
       </div>
 
-      {logDate && userId && (
+      {logDate && (
         <DayLogModal
           date={logDate}
           userId={userId}
           goals={goals}
           completions={completions}
+          readOnly={readOnly}
           onClose={() => setLogDate(null)}
         />
       )}
