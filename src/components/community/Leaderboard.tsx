@@ -1,12 +1,13 @@
 import { useState, useMemo } from 'react'
 import { computeLeaderboard, type RankEntry } from '@/lib/leaderboard'
 import { todayET } from '@/lib/time'
-import type { UserProfile, Goal, Completion } from '@/types'
+import type { UserProfile, Goal, Completion, Post } from '@/types'
 
 interface Props {
   users: UserProfile[]
   allGoals: Goal[]
   allCompletions: Completion[]
+  allPosts: Post[]
   currentUserId?: string
   onMemberClick: (uid: string) => void
 }
@@ -28,14 +29,14 @@ const MEDALS = {
   3: { gradient: 'linear-gradient(135deg,#fcd9b0,#b45309)', text: '#fef3c7', bar: '#b45309' },
 } as Record<number, { gradient: string; text: string; bar: string }>
 
-export default function Leaderboard({ users, allGoals, allCompletions, currentUserId, onMemberClick }: Props) {
+export default function Leaderboard({ users, allGoals, allCompletions, allPosts, currentUserId, onMemberClick }: Props) {
   const [idx, setIdx] = useState(0)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const today = todayET()
 
   const metrics = useMemo(
-    () => computeLeaderboard(users, allGoals, allCompletions, today),
-    [users, allGoals, allCompletions, today],
+    () => computeLeaderboard(users, allGoals, allCompletions, allPosts, today),
+    [users, allGoals, allCompletions, allPosts, today],
   )
 
   const metric = metrics[idx]
@@ -132,7 +133,7 @@ export default function Leaderboard({ users, allGoals, allCompletions, currentUs
     <div className="rounded-2xl overflow-hidden bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 mb-6 shadow-sm">
 
       {/* Gradient header */}
-      <div className="bg-gradient-to-r from-orange-500 to-amber-400 px-5 pt-5 pb-4">
+      <div className="bg-gradient-to-r from-orange-500 to-amber-400 dark:from-orange-900 dark:to-amber-800 px-5 pt-5 pb-4">
         <div className="flex items-center gap-3">
           <button
             onClick={prev}

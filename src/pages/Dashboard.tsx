@@ -7,6 +7,7 @@ import { useCompletions } from '@/hooks/useCompletions'
 import { useUsers } from '@/hooks/useUsers'
 import { useAllGoals } from '@/hooks/useAllGoals'
 import { useAllCompletions } from '@/hooks/useAllCompletions'
+import { usePosts } from '@/hooks/usePosts'
 import { deleteGoal } from '@/lib/firestore'
 import { auth } from '@/lib/firebase'
 import { isMobile } from '@/pages/Login'
@@ -90,17 +91,28 @@ export default function Dashboard() {
   const { users } = useUsers()
   const { goals: allGoals } = useAllGoals()
   const { completions: allCompletions } = useAllCompletions()
+  const { posts: allPosts } = usePosts()
 
   const sortedMembers = [...users].sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''))
 
   const [tab, setTab] = useState<Tab>(
-    (location.state as { tab?: Tab } | null)?.tab ?? 'feed'
+    (location.state as { tab?: Tab } | null)?.tab
+      ?? (sessionStorage.getItem('activeTab') as Tab | null)
+      ?? 'today'
   )
 
-  // Restore tab when navigating back from a member page
+  // Persist active tab so refresh stays on the same tab
+  useEffect(() => {
+    sessionStorage.setItem('activeTab', tab)
+  }, [tab])
+
+  // Restore tab when navigating back from a member page, then clear state so refresh uses sessionStorage instead
   useEffect(() => {
     const stateTab = (location.state as { tab?: Tab } | null)?.tab
-    if (stateTab) setTab(stateTab)
+    if (stateTab) {
+      setTab(stateTab)
+      window.history.replaceState({}, '', '/')
+    }
   }, [location.state])
   const [showForm, setShowForm] = useState(false)
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
@@ -176,6 +188,7 @@ export default function Dashboard() {
                     users={users}
                     allGoals={allGoals}
                     allCompletions={allCompletions}
+                    allPosts={allPosts}
                     currentUserId={firebaseUser?.uid}
                     onMemberClick={uid => {
                       navigate('/', { replace: true, state: { tab } })

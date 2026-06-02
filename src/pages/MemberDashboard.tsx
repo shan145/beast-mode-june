@@ -130,7 +130,7 @@ export default function MemberDashboard() {
             )}
 
             {tab === 'calendar' && (
-              <JuneCalendar goals={goals} completions={completions} />
+              <JuneCalendar goals={goals} completions={completions} userId={uid} readOnly />
             )}
 
             {tab === 'goals' && (
