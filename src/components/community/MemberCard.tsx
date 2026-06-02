@@ -2,6 +2,7 @@ import type { UserProfile } from '@/types'
 
 interface Props {
   member: UserProfile
+  isYou?: boolean
   onClick: () => void
 }
 
@@ -18,7 +19,7 @@ function initials(name: string): string {
   return name.split(' ').filter(Boolean).map(n => n[0]).join('').toUpperCase().slice(0, 2)
 }
 
-export default function MemberCard({ member, onClick }: Props) {
+export default function MemberCard({ member, isYou, onClick }: Props) {
   const color = avatarColor(member.uid)
   const abbr = initials(member.displayName || member.email)
 
@@ -36,6 +37,9 @@ export default function MemberCard({ member, onClick }: Props) {
       <span className="flex-1 text-gray-900 dark:text-white font-medium text-sm">
         {member.displayName || member.email}
       </span>
+      {isYou && (
+        <span className="text-xs text-gray-400 dark:text-gray-500 font-normal mr-1">You</span>
+      )}
       <svg className="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
       </svg>

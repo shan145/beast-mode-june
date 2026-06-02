@@ -48,6 +48,14 @@ export interface Comment {
   createdAt: Timestamp | null
 }
 
+export interface Reaction {
+  id: string
+  postId: string
+  userId: string
+  emoji: string
+  createdAt: Timestamp | null
+}
+
 // Derived type used by the calendar/checklist
 export interface DayState {
   date: string

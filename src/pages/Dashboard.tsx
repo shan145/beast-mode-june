@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { signOut } from 'firebase/auth'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth, clearGroupAuthed } from '@/hooks/useAuth'
@@ -86,13 +86,17 @@ export default function Dashboard() {
   const { completions, loading: completionsLoading } = useCompletions(firebaseUser?.uid)
   const { users } = useUsers()
 
-  const otherMembers = users
-    .filter(u => u.uid !== firebaseUser?.uid)
-    .sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''))
+  const sortedMembers = [...users].sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''))
 
   const [tab, setTab] = useState<Tab>(
-    (location.state as { tab?: Tab } | null)?.tab ?? 'today'
+    (location.state as { tab?: Tab } | null)?.tab ?? 'feed'
   )
+
+  // Restore tab when navigating back from a member page
+  useEffect(() => {
+    const stateTab = (location.state as { tab?: Tab } | null)?.tab
+    if (stateTab) setTab(stateTab)
+  }, [location.state])
   const [showForm, setShowForm] = useState(false)
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
   const [deletingGoal, setDeletingGoal] = useState<Goal | null>(null)
@@ -160,17 +164,22 @@ export default function Dashboard() {
             {tab === 'community' && (
               <>
                 <h2 className="text-xl font-semibold mb-4">The Group</h2>
-                {otherMembers.length === 0 ? (
+                {sortedMembers.length === 0 ? (
                   <div className="text-center py-16 text-gray-400 dark:text-gray-500">
-                    <p className="text-sm">No other members yet — share the group password to invite friends.</p>
+                    <p className="text-sm">No members yet — share the group password to invite friends.</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {otherMembers.map(member => (
+                    {sortedMembers.map(member => (
                       <MemberCard
                         key={member.uid}
                         member={member}
-                        onClick={() => navigate(`/member/${member.uid}`, { state: { from: 'community' } })}
+                        isYou={member.uid === firebaseUser?.uid}
+                        onClick={() => {
+                          // Stamp current tab onto this history entry so navigate(-1) restores it
+                          navigate('/', { replace: true, state: { tab } })
+                          navigate(`/member/${member.uid}`)
+                        }}
                       />
                     ))}
                   </div>
