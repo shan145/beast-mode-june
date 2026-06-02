@@ -10,7 +10,6 @@ import { useAllCompletions } from '@/hooks/useAllCompletions'
 import { usePosts } from '@/hooks/usePosts'
 import { deleteGoal } from '@/lib/firestore'
 import { auth } from '@/lib/firebase'
-import { isMobile } from '@/pages/Login'
 import { useTheme } from '@/contexts/ThemeContext'
 
 import GoalCard from '@/components/goals/GoalCard'
@@ -121,7 +120,7 @@ export default function Dashboard() {
 
   async function handleSignOut() {
     clearGroupAuthed()
-    if (!isMobile) await signOut(auth)
+    await signOut(auth)
     window.location.href = '/login'
   }
 
