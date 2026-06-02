@@ -37,6 +37,19 @@ export function subscribeToUser(uid: string, cb: (user: UserProfile | null) => v
   })
 }
 
+export function subscribeToAllGoals(cb: (goals: Goal[]) => void): Unsubscribe {
+  const q = query(collection(db, 'goals'), where('active', '==', true))
+  return onSnapshot(q, snap => {
+    cb(snap.docs.map(d => ({ id: d.id, ...d.data() } as Goal)))
+  })
+}
+
+export function subscribeToAllCompletions(cb: (completions: Completion[]) => void): Unsubscribe {
+  return onSnapshot(collection(db, 'completions'), snap => {
+    cb(snap.docs.map(d => ({ id: d.id, ...d.data() } as Completion)))
+  })
+}
+
 // ---- Goals ----
 
 export function subscribeToGoals(userId: string, cb: (goals: Goal[]) => void): Unsubscribe {

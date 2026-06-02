@@ -4,9 +4,10 @@ import { useTheme } from '@/contexts/ThemeContext'
 interface Props {
   day: CalendarDayData | null
   goalColors: Record<string, string>
+  onClick?: () => void
 }
 
-export default function DayCell({ day, goalColors }: Props) {
+export default function DayCell({ day, goalColors, onClick }: Props) {
   const { theme } = useTheme()
   const isDark = theme === 'dark'
 
@@ -14,15 +15,19 @@ export default function DayCell({ day, goalColors }: Props) {
 
   const showDots = !day.isFuture && !day.allDailyDone && day.dailyGoalStates.length > 0
   const showCheck = !day.isFuture && day.allDailyDone
+  const clickable = !!onClick && !day.isFuture
 
   return (
-    <div className={`flex flex-col items-center py-2 px-1 rounded-md transition-colors ${
-      day.isFuture
-        ? 'bg-gray-100/50 dark:bg-gray-900/40'
-        : day.isToday
-          ? 'bg-gray-200 dark:bg-gray-800'
-          : 'bg-gray-50 dark:bg-gray-900'
-    }`}>
+    <div
+      className={`flex flex-col items-center py-2 px-1 rounded-md transition-all ${
+        day.isFuture
+          ? 'bg-gray-100/50 dark:bg-gray-900/40'
+          : day.isToday
+            ? 'bg-gray-200 dark:bg-gray-800'
+            : 'bg-gray-50 dark:bg-gray-900'
+      } ${clickable ? 'cursor-pointer hover:ring-2 hover:ring-orange-400/50 active:scale-95' : ''}`}
+      onClick={clickable ? onClick : undefined}
+    >
       {/* Day number */}
       <div className={`w-7 h-7 flex items-center justify-center text-xs font-semibold rounded-full leading-none ${
         showCheck

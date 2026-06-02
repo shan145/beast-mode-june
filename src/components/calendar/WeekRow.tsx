@@ -4,9 +4,10 @@ import type { CalendarWeekData } from '@/hooks/useCalendar'
 interface Props {
   week: CalendarWeekData
   goalColors: Record<string, string>
+  onDayClick?: (date: string) => void
 }
 
-export default function WeekRow({ week, goalColors }: Props) {
+export default function WeekRow({ week, goalColors, onDayClick }: Props) {
   return (
     <div className={`rounded-lg mb-1.5 p-1 transition-all ${
       week.allWeeklyMet
@@ -15,7 +16,12 @@ export default function WeekRow({ week, goalColors }: Props) {
     }`}>
       <div className="grid grid-cols-7 gap-1">
         {week.days.map((day, i) => (
-          <DayCell key={i} day={day} goalColors={goalColors} />
+          <DayCell
+            key={i}
+            day={day}
+            goalColors={goalColors}
+            onClick={day && !day.isFuture && onDayClick ? () => onDayClick(day.date) : undefined}
+          />
         ))}
       </div>
     </div>
