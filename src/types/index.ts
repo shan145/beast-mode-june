@@ -40,6 +40,14 @@ export interface Post {
   createdAt: Timestamp | null
 }
 
+export interface Comment {
+  id: string
+  postId: string
+  userId: string
+  text: string
+  createdAt: Timestamp | null
+}
+
 // Derived type used by the calendar/checklist
 export interface DayState {
   date: string

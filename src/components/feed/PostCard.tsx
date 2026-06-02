@@ -1,11 +1,14 @@
 import { useState, useRef } from 'react'
 import type { Timestamp } from 'firebase/firestore'
 import type { Post, UserProfile } from '@/types'
+import CommentSection from './CommentSection'
 
 interface Props {
   post: Post
   author: UserProfile | undefined
   isOwn: boolean
+  currentUserId: string
+  userMap: Record<string, UserProfile>
   onEdit: () => void
   onDelete: () => void
 }
@@ -34,22 +37,33 @@ function timeAgo(ts: Timestamp | null): string {
   return ts.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-export default function PostCard({ post, author, isOwn, onEdit, onDelete }: Props) {
+export default function PostCard({ post, author, isOwn, currentUserId, userMap, onEdit, onDelete }: Props) {
   const [imgIdx, setImgIdx] = useState(0)
-  const touchStartX = useRef<number>(0)
+  const [dragOffset, setDragOffset] = useState(0)
+  const touchStartX = useRef(0)
   const name = author?.displayName || author?.email || 'Unknown'
   const color = avatarColor(post.userId)
   const abbr = initials(name)
   const urls = post.imageURLs ?? []
+  const n = urls.length
 
   function handleTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0].clientX
   }
 
+  function handleTouchMove(e: React.TouchEvent) {
+    const delta = e.touches[0].clientX - touchStartX.current
+    // Apply resistance at edges so it doesn't fly off into nothing
+    const atStart = imgIdx === 0 && delta > 0
+    const atEnd = imgIdx === n - 1 && delta < 0
+    setDragOffset(atStart || atEnd ? delta * 0.25 : delta)
+  }
+
   function handleTouchEnd(e: React.TouchEvent) {
-    const delta = touchStartX.current - e.changedTouches[0].clientX
-    if (delta > 50 && imgIdx < urls.length - 1) setImgIdx(i => i + 1)
-    if (delta < -50 && imgIdx > 0) setImgIdx(i => i - 1)
+    const delta = e.changedTouches[0].clientX - touchStartX.current
+    if (delta < -50 && imgIdx < n - 1) setImgIdx(i => i + 1)
+    else if (delta > 50 && imgIdx > 0) setImgIdx(i => i - 1)
+    setDragOffset(0)
   }
 
   return (
@@ -87,16 +101,28 @@ export default function PostCard({ post, author, isOwn, onEdit, onDelete }: Prop
       {/* Image carousel */}
       {urls.length > 0 && (
         <div
-          className="relative bg-black"
+          className="relative bg-black overflow-hidden"
           style={{ aspectRatio: '1/1', touchAction: 'pan-y' }}
           onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-          <img
-            src={urls[imgIdx]}
-            alt=""
-            className="w-full h-full object-contain"
-          />
+          {/* Sliding strip — all images laid out side-by-side */}
+          <div
+            style={{
+              display: 'flex',
+              width: `${n * 100}%`,
+              height: '100%',
+              transform: `translateX(calc(${-(imgIdx * 100) / n}% + ${dragOffset / n}px))`,
+              transition: dragOffset !== 0 ? 'none' : 'transform 0.3s ease',
+            }}
+          >
+            {urls.map((url, i) => (
+              <div key={i} style={{ width: `${100 / n}%`, flexShrink: 0, height: '100%' }}>
+                <img src={url} alt="" className="w-full h-full object-contain" />
+              </div>
+            ))}
+          </div>
 
           {urls.length > 1 && (
             <>
@@ -140,10 +166,16 @@ export default function PostCard({ post, author, isOwn, onEdit, onDelete }: Prop
 
       {/* Caption */}
       {post.caption && (
-        <div className="px-4 py-3">
+        <div className="px-4 pt-3 pb-2">
           <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">{post.caption}</p>
         </div>
       )}
+
+      <CommentSection
+        postId={post.id}
+        currentUserId={currentUserId}
+        userMap={userMap}
+      />
     </div>
   )
 }
