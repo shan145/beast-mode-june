@@ -55,6 +55,8 @@ export default function Feed() {
               post={post}
               author={userMap[post.userId]}
               isOwn={post.userId === firebaseUser?.uid}
+              currentUserId={firebaseUser?.uid ?? ''}
+              userMap={userMap}
               onEdit={() => setEditingPost(post)}
               onDelete={() => setDeletingPost(post)}
             />

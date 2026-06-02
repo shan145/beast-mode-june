@@ -14,7 +14,7 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore'
 import { db } from './firebase'
-import type { Goal, Completion, UserProfile, GoalFrequency, Post } from '@/types'
+import type { Goal, Completion, UserProfile, GoalFrequency, Post, Comment } from '@/types'
 
 // ---- Users ----
 
@@ -131,4 +131,33 @@ export async function updatePost(
 
 export async function deletePost(postId: string): Promise<void> {
   await deleteDoc(doc(db, 'posts', postId))
+}
+
+// ---- Comments ----
+
+export function subscribeToComments(postId: string, cb: (comments: Comment[]) => void): Unsubscribe {
+  const q = query(collection(db, 'comments'), where('postId', '==', postId))
+  return onSnapshot(q, snap => {
+    const comments = snap.docs
+      .map(d => ({ id: d.id, ...d.data() } as Comment))
+      .sort((a, b) => (a.createdAt?.toMillis() ?? 0) - (b.createdAt?.toMillis() ?? 0))
+    cb(comments)
+  })
+}
+
+export async function addComment(userId: string, postId: string, text: string): Promise<void> {
+  await addDoc(collection(db, 'comments'), {
+    postId,
+    userId,
+    text: text.trim(),
+    createdAt: serverTimestamp(),
+  })
+}
+
+export async function updateComment(commentId: string, text: string): Promise<void> {
+  await updateDoc(doc(db, 'comments', commentId), { text: text.trim() })
+}
+
+export async function deleteComment(commentId: string): Promise<void> {
+  await deleteDoc(doc(db, 'comments', commentId))
 }
