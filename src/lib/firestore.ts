@@ -14,7 +14,7 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore'
 import { db } from './firebase'
-import type { Goal, Completion, UserProfile, GoalFrequency, Post, Comment } from '@/types'
+import type { Goal, Completion, UserProfile, GoalFrequency, Post, Comment, Reaction } from '@/types'
 
 // ---- Users ----
 
@@ -160,4 +160,32 @@ export async function updateComment(commentId: string, text: string): Promise<vo
 
 export async function deleteComment(commentId: string): Promise<void> {
   await deleteDoc(doc(db, 'comments', commentId))
+}
+
+// ---- Reactions ----
+
+export function subscribeToReactions(postId: string, cb: (reactions: Reaction[]) => void): Unsubscribe {
+  const q = query(collection(db, 'reactions'), where('postId', '==', postId))
+  return onSnapshot(q, snap => {
+    cb(snap.docs.map(d => ({ id: d.id, ...d.data() } as Reaction)))
+  })
+}
+
+export async function toggleReaction(userId: string, postId: string, emoji: string): Promise<void> {
+  try {
+    const q = query(
+      collection(db, 'reactions'),
+      where('postId', '==', postId),
+      where('userId', '==', userId),
+      where('emoji', '==', emoji),
+    )
+    const existing = await getDocs(q)
+    if (!existing.empty) {
+      await Promise.all(existing.docs.map(d => deleteDoc(d.ref)))
+    } else {
+      await addDoc(collection(db, 'reactions'), { postId, userId, emoji, createdAt: serverTimestamp() })
+    }
+  } catch (err) {
+    console.error('toggleReaction failed:', err)
+  }
 }

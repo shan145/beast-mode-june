@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import type { Timestamp } from 'firebase/firestore'
 import type { Post, UserProfile } from '@/types'
 import CommentSection from './CommentSection'
+import ReactionBar from './ReactionBar'
 
 interface Props {
   post: Post
@@ -170,6 +171,8 @@ export default function PostCard({ post, author, isOwn, currentUserId, userMap, 
           <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">{post.caption}</p>
         </div>
       )}
+
+      <ReactionBar postId={post.id} currentUserId={currentUserId} />
 
       <CommentSection
         postId={post.id}

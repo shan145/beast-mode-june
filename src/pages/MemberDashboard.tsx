@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useUser } from '@/hooks/useUser'
 import { useGoals } from '@/hooks/useGoals'
 import { useCompletions } from '@/hooks/useCompletions'
@@ -62,8 +62,7 @@ function initials(name: string): string {
 export default function MemberDashboard() {
   const { uid } = useParams<{ uid: string }>()
   const navigate = useNavigate()
-  const location = useLocation()
-  const returnTab = (location.state as { from?: string } | null)?.from ?? 'today'
+
 
   const { theme, toggle: toggleTheme } = useTheme()
   const { user, loading: userLoading } = useUser(uid)
@@ -79,9 +78,9 @@ export default function MemberDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white">
-      <header className="border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex items-center gap-3">
+      <header className="border-b border-gray-200 dark:border-gray-800 px-6 pb-4 flex items-center gap-3" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1rem)' }}>
         <button
-          onClick={() => navigate('/', { state: { tab: returnTab } })}
+          onClick={() => navigate(-1)}
           className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition flex items-center gap-1.5 text-sm shrink-0"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
