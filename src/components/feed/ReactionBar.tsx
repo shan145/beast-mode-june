@@ -38,6 +38,27 @@ export default function ReactionBar({ postId, currentUserId, userMap }: Props) {
   const [hoveredEmoji, setHoveredEmoji] = useState<string | null>(null)
   const [tooltipAnchor, setTooltipAnchor] = useState<{ x: number; y: number } | null>(null)
 
+  // Long-press state for mobile
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const didLongPress = useRef(false)
+  const [mobileTooltip, setMobileTooltip] = useState<{ emoji: string; x: number; y: number } | null>(null)
+
+  function startLongPress(emoji: string, e: React.TouchEvent<HTMLButtonElement>) {
+    didLongPress.current = false
+    const rect = e.currentTarget.getBoundingClientRect()
+    longPressTimer.current = setTimeout(() => {
+      didLongPress.current = true
+      setMobileTooltip({ emoji, x: rect.left + rect.width / 2, y: rect.top })
+    }, 400)
+  }
+
+  function cancelLongPress() {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+  }
+
   const groups = reactions.reduce<Record<string, { count: number; isMine: boolean; uids: string[] }>>((acc, r) => {
     if (!acc[r.emoji]) acc[r.emoji] = { count: 0, isMine: false, uids: [] }
     acc[r.emoji].count++
@@ -81,14 +102,25 @@ export default function ReactionBar({ postId, currentUserId, userMap }: Props) {
       {Object.entries(groups).map(([emoji, { count, isMine }]) => (
         <button
           key={emoji}
-          onClick={() => toggleReaction(currentUserId, postId, emoji)}
-          onMouseEnter={e => {
+          onClick={() => {
+            if (didLongPress.current) { didLongPress.current = false; return }
+            toggleReaction(currentUserId, postId, emoji)
+          }}
+          onPointerEnter={e => {
+            if (e.pointerType !== 'mouse') return
             const rect = e.currentTarget.getBoundingClientRect()
             setHoveredEmoji(emoji)
             setTooltipAnchor({ x: rect.left + rect.width / 2, y: rect.top })
           }}
-          onMouseLeave={() => { setHoveredEmoji(null); setTooltipAnchor(null) }}
-          className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-sm border transition
+          onPointerLeave={e => {
+            if (e.pointerType !== 'mouse') return
+            setHoveredEmoji(null)
+            setTooltipAnchor(null)
+          }}
+          onTouchStart={e => startLongPress(emoji, e)}
+          onTouchEnd={cancelLongPress}
+          onTouchMove={cancelLongPress}
+          className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-sm border transition select-none
             ${isMine
               ? 'bg-orange-50 dark:bg-orange-950 border-orange-300 dark:border-orange-700'
               : 'bg-gray-100 dark:bg-gray-800 border-transparent hover:border-gray-300 dark:hover:border-gray-600'
@@ -100,6 +132,26 @@ export default function ReactionBar({ postId, currentUserId, userMap }: Props) {
           </span>
         </button>
       ))}
+
+      {/* Mobile long-press tooltip */}
+      {mobileTooltip && groups[mobileTooltip.emoji] && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setMobileTooltip(null)} />
+          <div
+            className="z-50 pointer-events-none"
+            style={{ position: 'fixed', left: mobileTooltip.x, top: mobileTooltip.y - 8, transform: 'translate(-50%, -100%)' }}
+          >
+            <div className="bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg px-3 py-2 shadow-lg max-w-[220px] text-center leading-relaxed">
+              {groups[mobileTooltip.emoji].uids.map(uid =>
+                uid === currentUserId ? 'You' : (userMap[uid]?.displayName || 'Someone')
+              ).join(', ')}
+            </div>
+            <div className="flex justify-center">
+              <div className="border-4 border-transparent border-t-gray-900 dark:border-t-gray-700" />
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Fixed-position tooltip — escapes overflow:hidden on PostCard */}
       {hoveredEmoji && tooltipAnchor && groups[hoveredEmoji] && (

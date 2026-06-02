@@ -7,6 +7,7 @@ import { useCompletions } from '@/hooks/useCompletions'
 import { useUsers } from '@/hooks/useUsers'
 import { useAllGoals } from '@/hooks/useAllGoals'
 import { useAllCompletions } from '@/hooks/useAllCompletions'
+import { usePosts } from '@/hooks/usePosts'
 import { deleteGoal } from '@/lib/firestore'
 import { auth } from '@/lib/firebase'
 import { isMobile } from '@/pages/Login'
@@ -90,6 +91,7 @@ export default function Dashboard() {
   const { users } = useUsers()
   const { goals: allGoals } = useAllGoals()
   const { completions: allCompletions } = useAllCompletions()
+  const { posts: allPosts } = usePosts()
 
   const sortedMembers = [...users].sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''))
 
@@ -186,6 +188,7 @@ export default function Dashboard() {
                     users={users}
                     allGoals={allGoals}
                     allCompletions={allCompletions}
+                    allPosts={allPosts}
                     currentUserId={firebaseUser?.uid}
                     onMemberClick={uid => {
                       navigate('/', { replace: true, state: { tab } })

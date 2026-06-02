@@ -1,5 +1,6 @@
+import type { Goal, Completion, UserProfile, Post } from '@/types'
+
 import { weekStart, weekEnd } from './time'
-import type { Goal, Completion, UserProfile } from '@/types'
 
 // The five Sun–Sat weeks that cover June 2026
 const JUNE_WEEKS = [1, 7, 14, 21, 28].map(d => {
@@ -36,7 +37,7 @@ interface UserStats {
   perfectDays: number
   totalSessions: number
   longestStreak: number
-  thisWeek: number
+  feedPosts: number
   weeklyGoalsMet: number
 }
 
@@ -44,6 +45,7 @@ function computeStats(
   uid: string,
   allGoals: Goal[],
   allCompletions: Completion[],
+  allPosts: Post[],
   today: string,
 ): UserStats {
   const goals = allGoals.filter(g => g.userId === uid)
@@ -93,10 +95,7 @@ function computeStats(
     }
   }
 
-  // This week
-  const ws = weekStart(today)
-  const we = weekEnd(today)
-  const thisWeek = comps.filter(c => c.date >= ws && c.date <= we).length
+  const feedPosts = allPosts.filter(p => p.userId === uid).length
 
   // Count (goal × week) pairs where the full quota was met — partial weeks don't count
   let weeklyGoalsMet = 0
@@ -108,7 +107,7 @@ function computeStats(
     }
   }
 
-  return { beastScore, perfectDays, totalSessions, longestStreak, thisWeek, weeklyGoalsMet }
+  return { beastScore, perfectDays, totalSessions, longestStreak, feedPosts, weeklyGoalsMet }
 }
 
 function getTop3(
@@ -117,7 +116,7 @@ function getTop3(
   formatLabel: (n: number) => string,
   statsMap: Map<string, UserStats>,
 ): { entries: RankEntry[]; maxScore: number } {
-  const EMPTY: UserStats = { beastScore: 0, perfectDays: 0, totalSessions: 0, longestStreak: 0, thisWeek: 0, weeklyGoalsMet: 0 }
+  const EMPTY: UserStats = { beastScore: 0, perfectDays: 0, totalSessions: 0, longestStreak: 0, feedPosts: 0, weeklyGoalsMet: 0 }
   const sorted = users
     .map(u => ({ uid: u.uid, score: getValue(statsMap.get(u.uid) ?? EMPTY) }))
     .sort((a, b) => b.score - a.score)
@@ -144,11 +143,12 @@ export function computeLeaderboard(
   users: UserProfile[],
   allGoals: Goal[],
   allCompletions: Completion[],
+  allPosts: Post[],
   today: string,
 ): LeaderboardMetric[] {
   const statsMap = new Map<string, UserStats>()
   for (const user of users) {
-    statsMap.set(user.uid, computeStats(user.uid, allGoals, allCompletions, today))
+    statsMap.set(user.uid, computeStats(user.uid, allGoals, allCompletions, allPosts, today))
   }
 
   const top3 = (get: (s: UserStats) => number, fmt: (n: number) => string, subset?: UserProfile[]) => {
@@ -169,6 +169,7 @@ export function computeLeaderboard(
   const pts = (n: number) => `${n} pt${n !== 1 ? 's' : ''}`
   const days = (n: number) => `${n} day${n !== 1 ? 's' : ''}`
   const completions = (n: number) => `${n} completion${n !== 1 ? 's' : ''}`
+  const posts = (n: number) => `${n} post${n !== 1 ? 's' : ''}`
 
   return [
     { id: 'beast',        name: 'Beast Score',      description: '1pt/completion · 3pts/perfect day · 10pts/perfect week', ...top3(s => s.beastScore,     pts,         undefined)             },
@@ -176,6 +177,6 @@ export function computeLeaderboard(
     { id: 'weekly-grind', name: 'Weekly Grind',      description: 'Weekly goals where full quota was hit',                   ...top3(s => s.weeklyGoalsMet, completions, usersWithWeeklyGoals)  },
     { id: 'sessions',     name: 'Total Completions', description: 'Total completions logged all of June',                   ...top3(s => s.totalSessions, completions, undefined)             },
     { id: 'streak',       name: 'Longest Streak',   description: 'Most consecutive days with any completion',               ...top3(s => s.longestStreak, days,        undefined)             },
-    { id: 'week',         name: 'This Week',         description: 'Completions logged in the current week',                 ...top3(s => s.thisWeek,      completions, undefined)             },
+    { id: 'feed-posts',   name: 'Feed Posting',      description: 'Total posts shared to the feed',                         ...top3(s => s.feedPosts,     posts,       undefined)             },
   ]
 }

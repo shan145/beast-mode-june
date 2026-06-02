@@ -46,6 +46,7 @@ export default function PostCard({ post, author, isOwn, currentUserId, userMap, 
 
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [lightboxIdx, setLightboxIdx] = useState(0)
+  const [lbDragOffset, setLbDragOffset] = useState(0)
   const lbTouchStartX = useRef(0)
   const lbDidDrag = useRef(false)
 
@@ -93,13 +94,21 @@ export default function PostCard({ post, author, isOwn, currentUserId, userMap, 
   function handleLbTouchMove(e: React.TouchEvent) {
     const delta = e.touches[0].clientX - lbTouchStartX.current
     if (Math.abs(delta) > 8) lbDidDrag.current = true
+    const atStart = lightboxIdx === 0 && delta > 0
+    const atEnd = lightboxIdx === n - 1 && delta < 0
+    setLbDragOffset(atStart || atEnd ? delta * 0.2 : delta)
   }
 
   function handleLbTouchEnd(e: React.TouchEvent) {
-    if (!lbDidDrag.current) return
+    e.preventDefault() // suppress synthetic click so underlying elements don't fire after close
     const delta = e.changedTouches[0].clientX - lbTouchStartX.current
-    if (delta < -50 && lightboxIdx < n - 1) setLightboxIdx(i => i + 1)
-    else if (delta > 50 && lightboxIdx > 0) setLightboxIdx(i => i - 1)
+    if (lbDidDrag.current) {
+      if (delta < -50 && lightboxIdx < n - 1) setLightboxIdx(i => i + 1)
+      else if (delta > 50 && lightboxIdx > 0) setLightboxIdx(i => i - 1)
+    } else {
+      setLightboxOpen(false)
+    }
+    setLbDragOffset(0)
   }
 
   useEffect(() => {
@@ -230,31 +239,44 @@ export default function PostCard({ post, author, isOwn, currentUserId, userMap, 
       {/* Lightbox */}
       {lightboxOpen && (
         <div
-          className="fixed inset-0 z-50 bg-black flex items-center justify-center"
-          onClick={() => setLightboxOpen(false)}
+          className="fixed inset-0 z-50 bg-black overflow-hidden"
+          style={{ touchAction: 'none' }}
           onTouchStart={handleLbTouchStart}
           onTouchMove={handleLbTouchMove}
           onTouchEnd={handleLbTouchEnd}
         >
+          {/* Sliding strip — same approach as the feed carousel */}
+          <div
+            style={{
+              display: 'flex',
+              width: `${n * 100}%`,
+              height: '100%',
+              transform: `translateX(calc(${-(lightboxIdx * 100) / n}% + ${lbDragOffset / n}px))`,
+              transition: lbDragOffset !== 0 ? 'none' : 'transform 0.3s ease',
+            }}
+          >
+            {urls.map((url, i) => (
+              <div
+                key={i}
+                style={{ width: `${100 / n}%`, flexShrink: 0, height: '100%' }}
+                className="flex items-center justify-center"
+              >
+                <img src={url} alt="" className="max-w-full max-h-full object-contain select-none" draggable={false} />
+              </div>
+            ))}
+          </div>
+
           {/* Close */}
           <button
+            onTouchEnd={e => { e.stopPropagation(); e.preventDefault(); setLightboxOpen(false) }}
             onClick={e => { e.stopPropagation(); setLightboxOpen(false) }}
             className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition z-10"
-            style={{ paddingTop: 'env(safe-area-inset-top)' }}
+            style={{ marginTop: 'env(safe-area-inset-top)' }}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
-
-          {/* Image */}
-          <img
-            src={urls[lightboxIdx]}
-            alt=""
-            className="max-w-full max-h-full object-contain select-none"
-            onClick={e => e.stopPropagation()}
-            draggable={false}
-          />
 
           {/* Desktop arrows */}
           {lightboxIdx > 0 && (
@@ -280,6 +302,7 @@ export default function PostCard({ post, author, isOwn, currentUserId, userMap, 
               {urls.map((_, i) => (
                 <button
                   key={i}
+                  onTouchEnd={e => { e.stopPropagation(); e.preventDefault(); setLightboxIdx(i) }}
                   onClick={e => { e.stopPropagation(); setLightboxIdx(i) }}
                   className={`w-2 h-2 rounded-full transition-colors ${i === lightboxIdx ? 'bg-white' : 'bg-white/30'}`}
                 />
