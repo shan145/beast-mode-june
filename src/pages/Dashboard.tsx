@@ -1,15 +1,14 @@
 import { useState, useEffect } from 'react'
-import { signOut } from 'firebase/auth'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { useAuth, clearGroupAuthed } from '@/hooks/useAuth'
+import { useAuth } from '@/hooks/useAuth'
 import { useGoals } from '@/hooks/useGoals'
 import { useCompletions } from '@/hooks/useCompletions'
 import { useUsers } from '@/hooks/useUsers'
 import { useAllGoals } from '@/hooks/useAllGoals'
 import { useAllCompletions } from '@/hooks/useAllCompletions'
 import { usePosts } from '@/hooks/usePosts'
+import { useUser } from '@/hooks/useUser'
 import { deleteGoal } from '@/lib/firestore'
-import { auth } from '@/lib/firebase'
 import { useTheme } from '@/contexts/ThemeContext'
 
 import GoalCard from '@/components/goals/GoalCard'
@@ -91,6 +90,7 @@ export default function Dashboard() {
   const { goals: allGoals } = useAllGoals()
   const { completions: allCompletions } = useAllCompletions()
   const { posts: allPosts } = usePosts()
+  const { user: ownProfile } = useUser(firebaseUser?.uid)
 
   const sortedMembers = [...users].sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''))
 
@@ -118,12 +118,6 @@ export default function Dashboard() {
   const [deletingGoal, setDeletingGoal] = useState<Goal | null>(null)
   const [deleting, setDeleting] = useState(false)
 
-  async function handleSignOut() {
-    clearGroupAuthed()
-    await signOut(auth)
-    window.location.href = '/login'
-  }
-
   async function confirmDelete() {
     if (!deletingGoal) return
     setDeleting(true)
@@ -139,7 +133,9 @@ export default function Dashboard() {
       <header className="border-b border-gray-200 dark:border-gray-800 px-6 pb-4 flex items-center justify-between" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1rem)' }}>
         <h1 className="text-lg font-bold text-orange-500">Beast Mode June</h1>
         <div className="flex items-center gap-3">
-          <span className="text-gray-500 dark:text-gray-400 text-sm hidden sm:block">{firebaseUser?.displayName}</span>
+          <span className="text-gray-500 dark:text-gray-400 text-sm hidden sm:block truncate max-w-[140px]">
+            {ownProfile?.displayName || firebaseUser?.displayName}
+          </span>
           <button
             onClick={toggleTheme}
             className="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition"
@@ -148,10 +144,14 @@ export default function Dashboard() {
             {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
           </button>
           <button
-            onClick={handleSignOut}
-            className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white text-sm transition"
+            onClick={() => navigate('/settings')}
+            className="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+            aria-label="Settings"
           >
-            Sign out
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
           </button>
         </div>
       </header>
