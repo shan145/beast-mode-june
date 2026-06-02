@@ -7,7 +7,7 @@ interface Props {
   currentUserId: string
 }
 
-const QUICK_EMOJIS = ['👍', '❤️', '🔥', '💪', '🎉', '😂', '😮', '🏆', '👏', '💯']
+const QUICK_EMOJIS = ['👍', '❤️', '🔥', '🎉', '😂', '💀']
 
 export default function ReactionBar({ postId, currentUserId }: Props) {
   const [reactions, setReactions] = useState<Reaction[]>([])
