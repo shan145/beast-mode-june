@@ -1,6 +1,6 @@
 import type { Goal, Completion, UserProfile, Post } from '@/types'
 
-import { weekStart, weekEnd } from './time'
+import { weekStart, weekEnd, toETDateString } from './time'
 
 // The five Sun–Sat weeks that cover June 2026
 const JUNE_WEEKS = [1, 7, 14, 21, 28].map(d => {
@@ -38,6 +38,7 @@ interface UserStats {
   totalSessions: number
   longestStreak: number
   feedPosts: number
+  postDays: number
   weeklyGoalsMet: number
 }
 
@@ -80,8 +81,17 @@ function computeStats(
   // Total sessions (capped at quota per weekly goal per week to avoid inflating beast score)
   const totalSessions = comps.length
 
-  // Beast score: 1pt per session + 3 per perfect day + 10 per perfect week
-  const beastScore = totalSessions + perfectDays * 3 + perfectWeeks * 10
+  // Unique June days the user posted to the feed (max 1 credit per day, Eastern Time)
+  const postDaySet = new Set<string>()
+  for (const p of allPosts.filter(p => p.userId === uid)) {
+    if (!p.createdAt) continue
+    const dateStr = toETDateString(p.createdAt.toDate())
+    if (dateStr >= '2026-06-01' && dateStr <= '2026-06-30') postDaySet.add(dateStr)
+  }
+  const postDays = postDaySet.size
+
+  // Beast score: 1pt/completion + 3pts/perfect day + 10pts/perfect week + 2pts/post day
+  const beastScore = totalSessions + perfectDays * 3 + perfectWeeks * 10 + postDays * 2
 
   // Longest streak: consecutive days with at least one completion
   let longestStreak = 0
@@ -107,7 +117,7 @@ function computeStats(
     }
   }
 
-  return { beastScore, perfectDays, totalSessions, longestStreak, feedPosts, weeklyGoalsMet }
+  return { beastScore, perfectDays, totalSessions, longestStreak, feedPosts, postDays, weeklyGoalsMet }
 }
 
 function getTop3(
@@ -116,7 +126,7 @@ function getTop3(
   formatLabel: (n: number) => string,
   statsMap: Map<string, UserStats>,
 ): { entries: RankEntry[]; maxScore: number } {
-  const EMPTY: UserStats = { beastScore: 0, perfectDays: 0, totalSessions: 0, longestStreak: 0, feedPosts: 0, weeklyGoalsMet: 0 }
+  const EMPTY: UserStats = { beastScore: 0, perfectDays: 0, totalSessions: 0, longestStreak: 0, feedPosts: 0, postDays: 0, weeklyGoalsMet: 0 }
   const sorted = users
     .map(u => ({ uid: u.uid, score: getValue(statsMap.get(u.uid) ?? EMPTY) }))
     .sort((a, b) => b.score - a.score)
@@ -172,7 +182,7 @@ export function computeLeaderboard(
   const posts = (n: number) => `${n} post${n !== 1 ? 's' : ''}`
 
   return [
-    { id: 'beast',        name: 'Beast Score',      description: '1pt/completion · 3pts/perfect day · 10pts/perfect week', ...top3(s => s.beastScore,     pts,         undefined)             },
+    { id: 'beast',        name: 'Beast Score',      description: 'Tap ⓘ to see how points are calculated',                ...top3(s => s.beastScore,     pts,         undefined)             },
     { id: 'consistent',   name: 'Most Consistent',  description: 'Days with every daily goal completed',                    ...top3(s => s.perfectDays,   days,        usersWithDailyGoals)   },
     { id: 'weekly-grind', name: 'Weekly Grind',      description: 'Weekly goals where full quota was hit',                   ...top3(s => s.weeklyGoalsMet, completions, usersWithWeeklyGoals)  },
     { id: 'sessions',     name: 'Total Completions', description: 'Total completions logged all of June',                   ...top3(s => s.totalSessions, completions, undefined)             },

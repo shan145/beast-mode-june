@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
-import { usePosts } from '@/hooks/usePosts'
+import { usePagedPosts } from '@/hooks/usePagedPosts'
 import { useUsers } from '@/hooks/useUsers'
 import { deletePost as deletePostDoc } from '@/lib/firestore'
 import type { Post } from '@/types'
@@ -9,7 +9,7 @@ import PostForm from './PostForm'
 
 export default function Feed() {
   const { firebaseUser } = useAuth()
-  const { posts, loading } = usePosts()
+  const { posts, loading, page, hasNext, hasPrev, goNext, goPrev, refresh } = usePagedPosts()
   const { users } = useUsers()
   const [showForm, setShowForm] = useState(false)
   const [editingPost, setEditingPost] = useState<Post | null>(null)
@@ -24,6 +24,7 @@ export default function Feed() {
     await deletePostDoc(deletingPost.id)
     setDeleting(false)
     setDeletingPost(null)
+    refresh()
   }
 
   return (
@@ -42,7 +43,7 @@ export default function Feed() {
         <div className="space-y-4 animate-pulse">
           {[1, 2].map(i => <div key={i} className="h-64 bg-gray-200 dark:bg-gray-800 rounded-2xl" />)}
         </div>
-      ) : posts.length === 0 ? (
+      ) : posts.length === 0 && page === 0 ? (
         <div className="text-center py-16 text-gray-400 dark:text-gray-500">
           <p className="text-lg mb-1 text-gray-500 dark:text-gray-400">No posts yet</p>
           <p className="text-sm">Share your first progress update!</p>
@@ -64,11 +65,42 @@ export default function Feed() {
         </div>
       )}
 
+      {/* Pagination */}
+      {(hasPrev || hasNext) && (
+        <div className="flex items-center justify-between mt-8">
+          <button
+            onClick={goPrev}
+            disabled={!hasPrev || loading}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            Previous
+          </button>
+
+          <span className="text-sm text-gray-400 dark:text-gray-500">
+            Page {page + 1}
+          </span>
+
+          <button
+            onClick={goNext}
+            disabled={!hasNext || loading}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+          >
+            Next
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      )}
+
       {(showForm || editingPost) && firebaseUser && (
         <PostForm
           userId={firebaseUser.uid}
           post={editingPost ?? undefined}
-          onClose={() => { setShowForm(false); setEditingPost(null) }}
+          onClose={() => { setShowForm(false); setEditingPost(null); refresh() }}
         />
       )}
 

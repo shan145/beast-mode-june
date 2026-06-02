@@ -32,6 +32,7 @@ const MEDALS = {
 export default function Leaderboard({ users, allGoals, allCompletions, allPosts, currentUserId, onMemberClick }: Props) {
   const [idx, setIdx] = useState(0)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [showInfo, setShowInfo] = useState(false)
   const today = todayET()
 
   const metrics = useMemo(
@@ -143,7 +144,20 @@ export default function Leaderboard({ users, allGoals, allCompletions, allPosts,
           </button>
           <div className="flex-1 text-center min-w-0">
             <p className="font-bold text-white text-base leading-tight">{metric.name}</p>
-            <p className="text-orange-100 text-xs mt-0.5">{metric.description}</p>
+            {metric.id === 'beast' ? (
+              <button
+                onClick={() => setShowInfo(true)}
+                className="inline-flex items-center gap-1 text-orange-100 text-xs mt-0.5 hover:text-white transition"
+              >
+                <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <circle cx="12" cy="12" r="10" />
+                  <path strokeLinecap="round" d="M12 16v-4M12 8h.01" />
+                </svg>
+                How points are calculated
+              </button>
+            ) : (
+              <p className="text-orange-100 text-xs mt-0.5">{metric.description}</p>
+            )}
           </div>
           <button
             onClick={next}
@@ -164,6 +178,49 @@ export default function Leaderboard({ users, allGoals, allCompletions, allPosts,
           ))}
         </div>
       </div>
+
+      {/* Beast Score info modal */}
+      {showInfo && (
+        <div
+          className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-end sm:items-center justify-center z-50 p-4"
+          onClick={() => setShowInfo(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm shadow-xl border border-gray-100 dark:border-gray-800 overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="bg-gradient-to-r from-orange-500 to-amber-400 dark:from-orange-900 dark:to-amber-800 px-5 py-4 flex items-center justify-between">
+              <p className="font-bold text-white text-base">How Beast Score Works</p>
+              <button onClick={() => setShowInfo(false)} className="text-white/70 hover:text-white transition">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="px-5 py-4 space-y-3">
+              {[
+                { pts: '+1 pt',   label: 'per completion logged' },
+                { pts: '+3 pts',  label: 'per perfect day — all daily goals done' },
+                { pts: '+10 pts', label: 'per perfect week — all weekly quotas met' },
+                { pts: '+2 pts',  label: 'per day you post to the feed (max 1/day)' },
+              ].map(({ pts, label }) => (
+                <div key={pts} className="flex items-start gap-3">
+                  <span className="text-sm font-bold text-orange-500 w-16 shrink-0">{pts}</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-300">{label}</span>
+                </div>
+              ))}
+            </div>
+            <div className="px-5 pb-5">
+              <button
+                onClick={() => setShowInfo(false)}
+                className="w-full bg-orange-500 hover:bg-orange-400 text-white font-semibold rounded-xl py-2.5 text-sm transition"
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Rank groups */}
       <div className="divide-y divide-gray-100 dark:divide-gray-800">

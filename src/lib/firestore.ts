@@ -9,10 +9,13 @@ import {
   query,
   where,
   orderBy,
+  limit,
+  startAfter,
   getDocs,
   onSnapshot,
   serverTimestamp,
   type Unsubscribe,
+  type DocumentSnapshot,
 } from 'firebase/firestore'
 import { db } from './firebase'
 import type { Goal, Completion, UserProfile, GoalFrequency, Post, Comment, Reaction } from '@/types'
@@ -130,6 +133,20 @@ export function subscribeToPosts(cb: (posts: Post[]) => void): Unsubscribe {
   return onSnapshot(q, snap => {
     cb(snap.docs.map(d => ({ id: d.id, ...d.data() } as Post)))
   })
+}
+
+export async function fetchPostsPage(
+  pageSize: number,
+  after?: DocumentSnapshot,
+): Promise<{ posts: Post[]; lastDoc: DocumentSnapshot | null }> {
+  const q = after
+    ? query(collection(db, 'posts'), orderBy('createdAt', 'desc'), startAfter(after), limit(pageSize))
+    : query(collection(db, 'posts'), orderBy('createdAt', 'desc'), limit(pageSize))
+  const snap = await getDocs(q)
+  return {
+    posts: snap.docs.map(d => ({ id: d.id, ...d.data() } as Post)),
+    lastDoc: snap.docs.at(-1) ?? null,
+  }
 }
 
 export async function createPost(
