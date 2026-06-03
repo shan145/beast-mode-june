@@ -19,5 +19,25 @@ service cloud.firestore {
       allow create: if request.auth.uid == request.resource.data.userId;
       allow update, delete: if request.auth.uid == resource.data.userId;
     }
+    // Users can only write their own posts
+    match /posts/{postId} {
+      allow create: if request.auth.uid == request.resource.data.userId;
+      allow update, delete: if request.auth.uid == resource.data.userId;
+    }
+    // Users can only write their own comments
+    match /comments/{commentId} {
+      allow create: if request.auth.uid == request.resource.data.userId;
+      allow update, delete: if request.auth.uid == resource.data.userId;
+    }
+    // Reactions: toggle by anyone authenticated, only on own reactions
+    match /reactions/{reactionId} {
+      allow create: if request.auth.uid == request.resource.data.userId;
+      allow delete: if request.auth.uid == resource.data.userId;
+    }
+    // Kudos: anyone can give kudos, but only as themselves
+    match /kudos/{kudosId} {
+      allow create: if request.auth.uid == request.resource.data.fromUserId;
+      allow delete: if request.auth.uid == resource.data.fromUserId;
+    }
   }
 }

@@ -2,6 +2,8 @@ import { useState, useRef } from 'react'
 import type { Post } from '@/types'
 import { createPost, updatePost } from '@/lib/firestore'
 import { uploadPostImages } from '@/lib/storage'
+import { sendNotification } from '@/lib/pushNotifications'
+import { auth } from '@/lib/firebase'
 
 interface Props {
   userId: string
@@ -55,6 +57,8 @@ export default function PostForm({ userId, post, onClose }: Props) {
         await updatePost(post.id, { caption, imageURLs })
       } else {
         await createPost(userId, { imageURLs, caption })
+        const name = auth.currentUser?.displayName ?? 'Someone'
+        sendNotification('feed-post', { userName: name }, { excludeUserId: userId })
       }
       onClose()
     } catch {

@@ -56,6 +56,14 @@ export interface Reaction {
   createdAt: Timestamp | null
 }
 
+export interface Kudos {
+  id: string
+  fromUserId: string
+  toUserId: string
+  date: string        // "YYYY-MM-DD" Eastern Time — the day the recipient completed all tasks
+  createdAt: Timestamp | null
+}
+
 // Derived type used by the calendar/checklist
 export interface DayState {
   date: string

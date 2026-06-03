@@ -35,3 +35,41 @@ html {
   from { width: 100%; }
   to { width: 0%; }
 }
+
+/* Gift celebration */
+@keyframes giftShake {
+  0%, 100% { transform: rotate(0deg) translateY(0); }
+  12%  { transform: rotate(-9deg) translateY(-5px); }
+  28%  { transform: rotate(8deg)  translateY(-9px); }
+  44%  { transform: rotate(-7deg) translateY(-11px); }
+  60%  { transform: rotate(7deg)  translateY(-11px); }
+  76%  { transform: rotate(-5deg) translateY(-8px); }
+  90%  { transform: rotate(4deg)  translateY(-5px); }
+}
+
+@keyframes lidFly {
+  0%   { transform: translateY(0)     rotate(0deg)   scale(1);   opacity: 1; }
+  100% { transform: translateY(-140px) rotate(-40deg) scale(0.6); opacity: 0; }
+}
+
+@keyframes boxPulse {
+  0%   { filter: brightness(1); }
+  40%  { filter: brightness(1.5); }
+  100% { filter: brightness(1); }
+}
+
+@keyframes celebrationReveal {
+  from { opacity: 0; transform: translateY(18px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+@keyframes postHighlight {
+  0%, 15% { box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.85); }
+  100%    { box-shadow: 0 0 0 0px rgba(249, 115, 22, 0); }
+}
+
+.gift-shake      { animation: giftShake 0.75s ease-in-out; }
+.lid-fly         { animation: lidFly 0.45s ease-in forwards; }
+.box-pulse       { animation: boxPulse 0.55s ease-out; }
+.celebration-reveal { animation: celebrationReveal 0.35s ease-out both; }
+.post-highlight  { animation: postHighlight 2.8s ease-out forwards; }

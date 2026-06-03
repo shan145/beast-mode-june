@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { useGoals } from '@/hooks/useGoals'
@@ -11,6 +11,8 @@ import { useUser } from '@/hooks/useUser'
 import { deleteGoal } from '@/lib/firestore'
 import { useTheme } from '@/contexts/ThemeContext'
 
+import { todayET } from '@/lib/time'
+import { registerPushSubscription, sendNotification } from '@/lib/pushNotifications'
 import GoalCard from '@/components/goals/GoalCard'
 import GoalForm from '@/components/goals/GoalForm'
 import DailyChecklist from '@/components/checklist/DailyChecklist'
@@ -19,6 +21,7 @@ import MemberCard from '@/components/community/MemberCard'
 import Leaderboard from '@/components/community/Leaderboard'
 import Feed from '@/components/feed/Feed'
 import NavTabs, { type TabDef } from '@/components/ui/NavTabs'
+import CelebrationGift from '@/components/ui/CelebrationGift'
 import type { Goal } from '@/types'
 
 type Tab = 'today' | 'calendar' | 'community' | 'feed' | 'goals'
@@ -94,7 +97,42 @@ export default function Dashboard() {
 
   const sortedMembers = [...users].sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''))
 
+  // Compute which members have completed all daily goals today (for kudos button)
+  const allDailyDoneTodayByUser = useMemo(() => {
+    const today = todayET()
+    const result: Record<string, boolean> = {}
+    for (const user of users) {
+      const dailyGoals = allGoals.filter(g => g.userId === user.uid && g.frequency.type === 'daily')
+      if (dailyGoals.length === 0) { result[user.uid] = false; continue }
+      result[user.uid] = dailyGoals.every(g =>
+        allCompletions.some(c => c.goalId === g.id && c.date === today)
+      )
+    }
+    return result
+  }, [users, allGoals, allCompletions])
+
   const tab = (searchParams.get('tab') as Tab) ?? 'feed'
+  const celebrationName = searchParams.get('celebration')
+
+  function dismissCelebration() {
+    setSearchParams(p => { p.delete('celebration'); return p }, { replace: true })
+  }
+
+  // Register push subscription once on mount — silently skips if permission denied
+  useEffect(() => {
+    registerPushSubscription()
+  }, [])
+
+  const [testNotifState, setTestNotifState] = useState<'idle' | 'sending' | 'ok' | 'err'>('idle')
+
+  async function sendTestNotification() {
+    setTestNotifState('sending')
+    const subscribed = await registerPushSubscription()
+    if (!subscribed) { setTestNotifState('err'); setTimeout(() => setTestNotifState('idle'), 3000); return }
+    await sendNotification('feed-post', { userName: 'Test (you)' }, { recipientIds: firebaseUser ? [firebaseUser.uid] : [] })
+    setTestNotifState('ok')
+    setTimeout(() => setTestNotifState('idle'), 3000)
+  }
 
   const [showForm, setShowForm] = useState(false)
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
@@ -113,12 +151,27 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white">
+      {celebrationName && <CelebrationGift fromName={celebrationName} onDismiss={dismissCelebration} />}
       <header className="border-b border-gray-200 dark:border-gray-800 px-6 pb-4 flex items-center justify-between" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1rem)' }}>
         <h1 className="text-lg font-bold text-orange-500">Beast Mode June</h1>
         <div className="flex items-center gap-3">
           <span className="text-gray-500 dark:text-gray-400 text-sm hidden sm:block truncate max-w-[140px]">
             {ownProfile?.displayName || firebaseUser?.displayName}
           </span>
+          {import.meta.env.DEV && (
+            <button
+              onClick={sendTestNotification}
+              disabled={testNotifState === 'sending'}
+              title="Send test push notification to yourself"
+              className={`p-1.5 rounded-lg text-xs font-medium transition ${
+                testNotifState === 'ok' ? 'text-green-500' :
+                testNotifState === 'err' ? 'text-red-500' :
+                'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
+              }`}
+            >
+              {testNotifState === 'sending' ? '...' : testNotifState === 'ok' ? '✓ sent' : testNotifState === 'err' ? '✗ failed' : '🔔'}
+            </button>
+          )}
           <button
             onClick={toggleTheme}
             className="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition"
@@ -190,6 +243,8 @@ export default function Dashboard() {
                           key={member.uid}
                           member={member}
                           isYou={member.uid === firebaseUser?.uid}
+                          allDailyDoneToday={allDailyDoneTodayByUser[member.uid]}
+                          currentUserName={ownProfile?.displayName}
                           onClick={() => navigate(`/member/${member.uid}`)}
                         />
                       ))}

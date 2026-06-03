@@ -1,9 +1,13 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useAuth } from '@/hooks/useAuth'
 import { useUser } from '@/hooks/useUser'
 import { useGoals } from '@/hooks/useGoals'
 import { useCompletions } from '@/hooks/useCompletions'
 import { useTheme } from '@/contexts/ThemeContext'
+import { sendNotification } from '@/lib/pushNotifications'
+import { auth } from '@/lib/firebase'
+import { todayET } from '@/lib/time'
 import DailyChecklist from '@/components/checklist/DailyChecklist'
 import JuneCalendar from '@/components/calendar/JuneCalendar'
 import GoalCard from '@/components/goals/GoalCard'
@@ -62,15 +66,35 @@ function initials(name: string): string {
 export default function MemberDashboard() {
   const { uid } = useParams<{ uid: string }>()
   const navigate = useNavigate()
-
+  const { firebaseUser } = useAuth()
 
   const { theme, toggle: toggleTheme } = useTheme()
   const { user, loading: userLoading } = useUser(uid)
+  const { user: ownProfile } = useUser(firebaseUser?.uid)
   const { goals, loading: goalsLoading } = useGoals(uid)
   const { completions, loading: completionsLoading } = useCompletions(uid)
   const [tab, setTab] = useState<Tab>('today')
+  const [beastSent, setBeastSent] = useState(false)
 
   const loading = userLoading || goalsLoading || completionsLoading
+  const isCurrentUser = firebaseUser?.uid === uid
+
+  const allDailyDone = useMemo(() => {
+    const today = todayET()
+    const dailyGoals = goals.filter(g => g.frequency.type === 'daily')
+    if (dailyGoals.length === 0) return false
+    return dailyGoals.every(g => completions.some(c => c.goalId === g.id && c.date === today))
+  }, [goals, completions])
+
+  async function handleBeast() {
+    const currentUser = auth.currentUser
+    if (!currentUser || !uid) return
+    setBeastSent(true)
+    const fromName = ownProfile?.displayName ?? currentUser.displayName ?? 'Someone'
+    const toName = user?.displayName || user?.email || 'Someone'
+    sendNotification('gift-sent', { userName: fromName, toName, toUserId: uid }, { recipientIds: [uid] })
+    setTimeout(() => setBeastSent(false), 1500)
+  }
 
   const displayName = user?.displayName || user?.email || 'Member'
   const color = uid ? avatarColor(uid) : '#f97316'
@@ -100,6 +124,19 @@ export default function MemberDashboard() {
         </div>
 
         <div className="ml-auto flex items-center gap-2 shrink-0">
+          {!isCurrentUser && allDailyDone && (
+            <button
+              onClick={handleBeast}
+              disabled={beastSent}
+              className={`text-xs font-semibold px-2.5 py-1 rounded-full transition
+                ${beastSent
+                  ? 'bg-orange-100 dark:bg-orange-950 text-orange-400 cursor-default'
+                  : 'bg-orange-500 hover:bg-orange-400 text-white'
+                }`}
+            >
+              {beastSent ? 'Sent!' : 'Beast!'}
+            </button>
+          )}
           <span className="text-xs text-gray-400 dark:text-gray-600">view only</span>
           <button
             onClick={toggleTheme}

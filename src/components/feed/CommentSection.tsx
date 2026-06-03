@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 import type { Comment, UserProfile } from '@/types'
 import { subscribeToComments, addComment, updateComment, deleteComment } from '@/lib/firestore'
+import { sendNotification } from '@/lib/pushNotifications'
+import { auth } from '@/lib/firebase'
 
 interface Props {
   postId: string
+  postAuthorId: string
   currentUserId: string
   userMap: Record<string, UserProfile>
 }
@@ -23,7 +26,7 @@ function initials(name: string): string {
 
 const COLLAPSE_AT = 3
 
-export default function CommentSection({ postId, currentUserId, userMap }: Props) {
+export default function CommentSection({ postId, postAuthorId, currentUserId, userMap }: Props) {
   const [comments, setComments] = useState<Comment[]>([])
   const [expanded, setExpanded] = useState(false)
   const [text, setText] = useState('')
@@ -57,6 +60,16 @@ export default function CommentSection({ postId, currentUserId, userMap }: Props
     await addComment(currentUserId, postId, trimmed)
     setText('')
     setSubmitting(false)
+
+    // Notify: post author + all existing commenters, excluding the commenter themselves
+    const recipientIds = Array.from(new Set([
+      postAuthorId,
+      ...comments.map(c => c.userId),
+    ])).filter(id => id !== currentUserId)
+    if (recipientIds.length > 0) {
+      const name = auth.currentUser?.displayName ?? 'Someone'
+      sendNotification('feed-comment', { userName: name, postId }, { recipientIds })
+    }
   }
 
   function startEdit(comment: Comment) {
