@@ -1,8 +1,13 @@
+import { useState } from 'react'
 import type { UserProfile } from '@/types'
+import { sendNotification } from '@/lib/pushNotifications'
+import { auth } from '@/lib/firebase'
 
 interface Props {
   member: UserProfile
   isYou?: boolean
+  allDailyDoneToday?: boolean
+  currentUserName?: string
   onClick: () => void
 }
 
@@ -19,14 +24,29 @@ function initials(name: string): string {
   return name.split(' ').filter(Boolean).map(n => n[0]).join('').toUpperCase().slice(0, 2)
 }
 
-export default function MemberCard({ member, isYou, onClick }: Props) {
+export default function MemberCard({ member, isYou, allDailyDoneToday, currentUserName, onClick }: Props) {
   const color = avatarColor(member.uid)
   const abbr = initials(member.displayName || member.email)
+  const [sent, setSent] = useState(false)
+
+  async function handleBeast(e: React.MouseEvent) {
+    e.stopPropagation()
+    const currentUser = auth.currentUser
+    if (!currentUser) return
+    setSent(true)
+    const fromName = currentUserName ?? currentUser.displayName ?? 'Someone'
+    const toName = member.displayName || member.email || 'Someone'
+    sendNotification('gift-sent', { userName: fromName, toName, toUserId: member.uid }, { recipientIds: [member.uid] })
+    setTimeout(() => setSent(false), 1500)
+  }
 
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
-      className="w-full flex items-center gap-3 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl px-4 py-3 transition-colors text-left border border-gray-100 dark:border-transparent"
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onClick() }}
+      className="w-full flex items-center gap-3 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl px-4 py-3 transition-colors text-left border border-gray-100 dark:border-transparent cursor-pointer"
     >
       <div
         className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
@@ -40,9 +60,22 @@ export default function MemberCard({ member, isYou, onClick }: Props) {
       {isYou && (
         <span className="text-xs text-gray-400 dark:text-gray-500 font-normal mr-1">You</span>
       )}
-      <svg className="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      {!isYou && allDailyDoneToday && (
+        <button
+          onClick={handleBeast}
+          disabled={sent}
+          className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full transition mr-1
+            ${sent
+              ? 'bg-orange-100 dark:bg-orange-950 text-orange-400 dark:text-orange-500 cursor-default'
+              : 'bg-orange-500 hover:bg-orange-400 text-white'
+            }`}
+        >
+          {sent ? 'Sent!' : 'Beast!'}
+        </button>
+      )}
+      <svg className="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
       </svg>
-    </button>
+    </div>
   )
 }

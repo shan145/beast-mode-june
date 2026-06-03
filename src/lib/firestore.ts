@@ -18,7 +18,7 @@ import {
   type DocumentSnapshot,
 } from 'firebase/firestore'
 import { db } from './firebase'
-import type { Goal, Completion, UserProfile, GoalFrequency, Post, Comment, Reaction } from '@/types'
+import type { Goal, Completion, UserProfile, GoalFrequency, Post, Comment, Reaction, Kudos } from '@/types'
 
 // ---- Users ----
 
@@ -128,6 +128,11 @@ export async function removeCompletion(userId: string, goalId: string, date: str
 
 // ---- Posts ----
 
+export async function getPost(postId: string): Promise<Post | null> {
+  const snap = await getDoc(doc(db, 'posts', postId))
+  return snap.exists() ? { id: snap.id, ...snap.data() } as Post : null
+}
+
 export function subscribeToPosts(cb: (posts: Post[]) => void): Unsubscribe {
   const q = query(collection(db, 'posts'), orderBy('createdAt', 'desc'))
   return onSnapshot(q, snap => {
@@ -227,3 +232,26 @@ export async function toggleReaction(userId: string, postId: string, emoji: stri
     console.error('toggleReaction failed:', err)
   }
 }
+
+// ---- Kudos ----
+
+export async function addKudos(fromUserId: string, toUserId: string, date: string): Promise<void> {
+  await addDoc(collection(db, 'kudos'), {
+    fromUserId,
+    toUserId,
+    date,
+    createdAt: serverTimestamp(),
+  })
+}
+
+export function subscribeToKudosReceived(toUserId: string, date: string, cb: (kudos: Kudos[]) => void): Unsubscribe {
+  const q = query(
+    collection(db, 'kudos'),
+    where('toUserId', '==', toUserId),
+    where('date', '==', date),
+  )
+  return onSnapshot(q, snap => {
+    cb(snap.docs.map(d => ({ id: d.id, ...d.data() } as Kudos)))
+  })
+}
+

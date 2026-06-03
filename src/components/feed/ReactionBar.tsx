@@ -1,16 +1,19 @@
 import { useState, useEffect, useRef } from 'react'
 import type { Reaction, UserProfile } from '@/types'
 import { subscribeToReactions, toggleReaction } from '@/lib/firestore'
+import { sendNotification } from '@/lib/pushNotifications'
+import { auth } from '@/lib/firebase'
 
 interface Props {
   postId: string
+  postAuthorId: string
   currentUserId: string
   userMap: Record<string, UserProfile>
 }
 
 const QUICK_EMOJIS = ['👍', '❤️', '🔥', '🎉', '😂', '💀']
 
-export default function ReactionBar({ postId, currentUserId, userMap }: Props) {
+export default function ReactionBar({ postId, postAuthorId, currentUserId, userMap }: Props) {
   const [reactions, setReactions] = useState<Reaction[]>([])
   const [open, setOpen] = useState(false)
   const trayRef = useRef<HTMLDivElement>(null)
@@ -67,9 +70,15 @@ export default function ReactionBar({ postId, currentUserId, userMap }: Props) {
     return acc
   }, {})
 
-  function pick(emoji: string) {
-    toggleReaction(currentUserId, postId, emoji)
+  async function pick(emoji: string) {
+    const wasReacted = groups[emoji]?.isMine ?? false
+    await toggleReaction(currentUserId, postId, emoji)
     setOpen(false)
+    // Only notify on add, not on remove; don't notify if reacting to own post
+    if (!wasReacted && postAuthorId !== currentUserId) {
+      const name = auth.currentUser?.displayName ?? 'Someone'
+      sendNotification('feed-reaction', { userName: name, postId, emoji }, { recipientIds: [postAuthorId] })
+    }
   }
 
   return (

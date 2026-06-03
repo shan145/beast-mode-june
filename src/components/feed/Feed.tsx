@@ -1,20 +1,36 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { usePagedPosts } from '@/hooks/usePagedPosts'
 import { useUsers } from '@/hooks/useUsers'
-import { deletePost as deletePostDoc } from '@/lib/firestore'
+import { deletePost as deletePostDoc, getPost } from '@/lib/firestore'
 import type { Post } from '@/types'
 import PostCard from './PostCard'
 import PostForm from './PostForm'
 
 export default function Feed() {
   const { firebaseUser } = useAuth()
+  const [searchParams] = useSearchParams()
+  const targetPostId = searchParams.get('post') ?? undefined
   const { posts, loading, page, hasNext, hasPrev, goNext, goPrev, refresh } = usePagedPosts()
   const { users } = useUsers()
   const [showForm, setShowForm] = useState(false)
   const [editingPost, setEditingPost] = useState<Post | null>(null)
   const [deletingPost, setDeletingPost] = useState<Post | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [linkedPost, setLinkedPost] = useState<Post | null>(null)
+  const linkedPostRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!targetPostId) return
+    getPost(targetPostId).then(p => setLinkedPost(p))
+  }, [targetPostId])
+
+  useEffect(() => {
+    if (!linkedPost) return
+    const t = setTimeout(() => linkedPostRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150)
+    return () => clearTimeout(t)
+  }, [linkedPost])
 
   const userMap = Object.fromEntries(users.map(u => [u.uid, u]))
 
@@ -50,7 +66,33 @@ export default function Feed() {
         </div>
       ) : (
         <div className="space-y-6">
-          {posts.map(post => (
+          {linkedPost && (
+            <>
+              <div className="flex items-center gap-2">
+                <svg className="w-3.5 h-3.5 text-orange-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+                <span className="text-xs font-semibold text-orange-500 uppercase tracking-wider">From your notification</span>
+              </div>
+              <div ref={linkedPostRef} className="post-highlight rounded-2xl">
+                <PostCard
+                  post={linkedPost}
+                  author={userMap[linkedPost.userId]}
+                  isOwn={linkedPost.userId === firebaseUser?.uid}
+                  currentUserId={firebaseUser?.uid ?? ''}
+                  userMap={userMap}
+                  onEdit={() => setEditingPost(linkedPost)}
+                  onDelete={() => setDeletingPost(linkedPost)}
+                />
+              </div>
+              <div className="flex items-center gap-3 pt-2">
+                <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
+                <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Recent posts</span>
+                <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
+              </div>
+            </>
+          )}
+          {posts.filter(p => p.id !== linkedPost?.id).map(post => (
             <PostCard
               key={post.id}
               post={post}

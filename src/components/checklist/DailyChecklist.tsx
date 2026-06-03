@@ -6,6 +6,8 @@ import type { Goal, Completion } from '@/types'
 import TaskItem from './TaskItem'
 import CelebrationToast from './CelebrationToast'
 import ProgressRing from '@/components/ui/ProgressRing'
+import { sendNotification } from '@/lib/pushNotifications'
+import { auth } from '@/lib/firebase'
 
 interface Props {
   userId: string
@@ -130,12 +132,18 @@ export default function DailyChecklist({ userId, goals, completions, readOnly }:
       return count >= g.frequency.daysPerWeek
     })
 
+    const name = auth.currentUser?.displayName ?? 'Someone'
+
     if (nowWeeklyDone && !wasWeeklyDone) {
       setTimeout(fireWeeklyCelebration, 300)
       setCelebration('weekly')
+      // Worker enforces once-per-week idempotency via KV
+      sendNotification('weekly-complete', { userName: name, weekStart: ws }, { excludeUserId: userId })
     } else if (nowDailyDone && !wasDailyDone) {
       setTimeout(fireDailyCelebration, 300)
       setCelebration('daily')
+      // Worker enforces once-per-day idempotency via KV
+      sendNotification('daily-complete', { userName: name, date: today }, { excludeUserId: userId })
     } else if (task.goal.frequency.type === 'weekly') {
       setCelebration('weekly-log')
     }

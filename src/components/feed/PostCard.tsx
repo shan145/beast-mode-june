@@ -232,10 +232,11 @@ export default function PostCard({ post, author, isOwn, currentUserId, userMap, 
         </div>
       )}
 
-      <ReactionBar postId={post.id} currentUserId={currentUserId} userMap={userMap} />
+      <ReactionBar postId={post.id} postAuthorId={post.userId} currentUserId={currentUserId} userMap={userMap} />
 
       <CommentSection
         postId={post.id}
+        postAuthorId={post.userId}
         currentUserId={currentUserId}
         userMap={userMap}
       />
