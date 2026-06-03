@@ -1,0 +1,7 @@
+name = "beast-mode-images"
+main = "index.js"
+compatibility_date = "2024-09-23"
+workers_dev = false
+
+[env.production]
+routes = [{ pattern = "img.beast-mode-cct.com/*", custom_domain = true }]

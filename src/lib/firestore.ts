@@ -145,7 +145,7 @@ export async function fetchPostsPage(
   const snap = await getDocs(q)
   return {
     posts: snap.docs.map(d => ({ id: d.id, ...d.data() } as Post)),
-    lastDoc: snap.docs.at(-1) ?? null,
+    lastDoc: snap.docs[snap.docs.length - 1] ?? null,
   }
 }
 

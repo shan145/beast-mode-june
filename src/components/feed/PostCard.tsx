@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import type { Timestamp } from 'firebase/firestore'
 import type { Post, UserProfile } from '@/types'
+import { toWorkerUrl } from '@/lib/images'
 import CommentSection from './CommentSection'
 import ReactionBar from './ReactionBar'
 
@@ -53,7 +54,7 @@ export default function PostCard({ post, author, isOwn, currentUserId, userMap, 
   const name = author?.displayName || author?.email || 'Unknown'
   const color = avatarColor(post.userId)
   const abbr = initials(name)
-  const urls = post.imageURLs ?? []
+  const urls = (post.imageURLs ?? []).map(toWorkerUrl)
   const n = urls.length
 
   function handleTouchStart(e: React.TouchEvent) {
