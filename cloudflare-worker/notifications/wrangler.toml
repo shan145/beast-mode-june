@@ -1,0 +1,24 @@
+name = "beast-mode-notifications"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+workers_dev = true
+
+kv_namespaces = [
+  { binding = "PUSH_KV", id = "e4864710c71b4cbc9f6af6ff16ea87bd" }
+]
+
+# After deploying, set secrets via:
+#   wrangler secret put VAPID_PRIVATE_KEY_JWK
+#   wrangler secret put VAPID_PUBLIC_KEY
+#   wrangler secret put VAPID_SUBJECT          (e.g. mailto:you@example.com)
+#   wrangler secret put FIREBASE_API_KEY
+
+[env.production]
+workers_dev = false
+kv_namespaces = [
+  { binding = "PUSH_KV", id = "e4864710c71b4cbc9f6af6ff16ea87bd" }
+]
+
+[[env.production.routes]]
+pattern = "notify.beast-mode-cct.com"
+custom_domain = true
