@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import type { Timestamp } from 'firebase/firestore'
 import type { Post, UserProfile } from '@/types'
 import { toWorkerUrl } from '@/lib/images'
@@ -127,16 +128,18 @@ export default function PostCard({ post, author, isOwn, currentUserId, userMap, 
     <div className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden border border-gray-100 dark:border-transparent shadow-sm">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3">
-        <div
-          className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
-          style={{ backgroundColor: color }}
-        >
-          {abbr}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{name}</p>
-          <p className="text-xs text-gray-400 dark:text-gray-500">{timeAgo(post.createdAt)}</p>
-        </div>
+        <Link to={`/member/${post.userId}`} className="flex items-center gap-3 flex-1 min-w-0 group">
+          <div
+            className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
+            style={{ backgroundColor: color }}
+          >
+            {abbr}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-gray-900 dark:text-white truncate group-hover:underline">{name}</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500">{timeAgo(post.createdAt)}</p>
+          </div>
+        </Link>
         {isOwn && (
           <div className="flex gap-1">
             <button
