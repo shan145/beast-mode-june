@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { useGoals } from '@/hooks/useGoals'
 import { useCompletions } from '@/hooks/useCompletions'
@@ -82,7 +82,7 @@ const TABS: TabDef<Tab>[] = [
 export default function Dashboard() {
   const { firebaseUser } = useAuth()
   const navigate = useNavigate()
-  const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { theme, toggle: toggleTheme } = useTheme()
   const { goals, loading: goalsLoading } = useGoals(firebaseUser?.uid)
   const { completions, loading: completionsLoading } = useCompletions(firebaseUser?.uid)
@@ -94,25 +94,8 @@ export default function Dashboard() {
 
   const sortedMembers = [...users].sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''))
 
-  const [tab, setTab] = useState<Tab>(
-    (location.state as { tab?: Tab } | null)?.tab
-      ?? (sessionStorage.getItem('activeTab') as Tab | null)
-      ?? 'today'
-  )
+  const tab = (searchParams.get('tab') as Tab) ?? 'feed'
 
-  // Persist active tab so refresh stays on the same tab
-  useEffect(() => {
-    sessionStorage.setItem('activeTab', tab)
-  }, [tab])
-
-  // Restore tab when navigating back from a member page, then clear state so refresh uses sessionStorage instead
-  useEffect(() => {
-    const stateTab = (location.state as { tab?: Tab } | null)?.tab
-    if (stateTab) {
-      setTab(stateTab)
-      window.history.replaceState({}, '', '/')
-    }
-  }, [location.state])
   const [showForm, setShowForm] = useState(false)
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
   const [deletingGoal, setDeletingGoal] = useState<Goal | null>(null)
@@ -156,7 +139,7 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <NavTabs tabs={TABS} active={tab} onChange={setTab} />
+      <NavTabs tabs={TABS} active={tab} onChange={t => setSearchParams({ tab: t })} />
 
       <main className="max-w-2xl mx-auto px-6 pt-8 pb-28 md:pb-8">
         {loading ? (
@@ -189,10 +172,7 @@ export default function Dashboard() {
                     allCompletions={allCompletions}
                     allPosts={allPosts}
                     currentUserId={firebaseUser?.uid}
-                    onMemberClick={uid => {
-                      navigate('/', { replace: true, state: { tab } })
-                      navigate(`/member/${uid}`)
-                    }}
+                    onMemberClick={uid => navigate(`/member/${uid}`)}
                   />
                 )}
 
@@ -210,10 +190,7 @@ export default function Dashboard() {
                           key={member.uid}
                           member={member}
                           isYou={member.uid === firebaseUser?.uid}
-                          onClick={() => {
-                            navigate('/', { replace: true, state: { tab } })
-                            navigate(`/member/${member.uid}`)
-                          }}
+                          onClick={() => navigate(`/member/${member.uid}`)}
                         />
                       ))}
                     </div>
