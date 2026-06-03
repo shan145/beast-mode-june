@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import type { Comment, UserProfile } from '@/types'
 import { subscribeToComments, addComment, updateComment, deleteComment } from '@/lib/firestore'
 
@@ -93,12 +94,14 @@ export default function CommentSection({ postId, currentUserId, userMap }: Props
 
             return (
               <div key={comment.id} className="flex items-center gap-2 group">
-                <div
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
-                  style={{ backgroundColor: color }}
-                >
-                  {abbr}
-                </div>
+                <Link to={`/member/${comment.userId}`} className="shrink-0">
+                  <div
+                    className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white"
+                    style={{ backgroundColor: color }}
+                  >
+                    {abbr}
+                  </div>
+                </Link>
 
                 {isEditing ? (
                   <form
@@ -119,7 +122,7 @@ export default function CommentSection({ postId, currentUserId, userMap }: Props
                 ) : (
                   <>
                     <p className="flex-1 text-xs text-gray-800 dark:text-gray-200 break-words min-w-0">
-                      <span className="font-bold mr-1.5">{name}</span>
+                      <Link to={`/member/${comment.userId}`} className="font-bold mr-1.5 hover:underline">{name}</Link>
                       {comment.text}
                     </p>
 
