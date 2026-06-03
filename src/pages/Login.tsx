@@ -1,63 +1,19 @@
-import { useState, useEffect } from 'react'
-import { signInWithPopup, signInWithRedirect, onAuthStateChanged } from 'firebase/auth'
+import { useState } from 'react'
+import { signInWithPopup } from 'firebase/auth'
 import { useNavigate } from 'react-router-dom'
-import { auth, googleProvider, pendingRedirect } from '@/lib/firebase'
+import { auth, googleProvider } from '@/lib/firebase'
 import { GROUP_PASSWORD, setGroupAuthed } from '@/hooks/useAuth'
 import { upsertUser } from '@/lib/firestore'
-
-export const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
 
 export default function Login() {
   const [step, setStep] = useState<'google' | 'password'>('google')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
-
-  useEffect(() => {
-    let done = false
-
-    async function processUser(uid: string, email: string, displayName: string, photoURL: string) {
-      await upsertUser({ uid, email, displayName, photoURL })
-      setStep('password')
-      setLoading(false)
-      done = true
-    }
-
-    pendingRedirect
-      .then(result => {
-        if (result?.user && !done) {
-          const { uid, email, displayName, photoURL } = result.user
-          return processUser(uid, email ?? '', displayName ?? '', photoURL ?? '')
-        }
-      })
-      .catch(err => {
-        console.error('redirect error:', err)
-        setError('Sign-in failed. Try again.')
-        setLoading(false)
-        done = true
-      })
-
-    const unsub = onAuthStateChanged(auth, user => {
-      if (done) return
-      if (user) {
-        processUser(user.uid, user.email ?? '', user.displayName ?? '', user.photoURL ?? '')
-      } else {
-        pendingRedirect.then(r => {
-          if (!r && !done) setLoading(false)
-        })
-      }
-    })
-
-    return unsub
-  }, [])
 
   async function handleGoogleSignIn() {
     setError('')
-    if (isMobile) {
-      signInWithRedirect(auth, googleProvider)
-      return
-    }
     setLoading(true)
     try {
       const result = await signInWithPopup(auth, googleProvider)
@@ -70,8 +26,10 @@ export default function Login() {
       setStep('password')
     } catch (err: unknown) {
       const code = (err as { code?: string })?.code
-      console.error('sign-in error:', err)
-      setError(`Sign-in failed: ${code ?? 'unknown'}`)
+      if (code !== 'auth/popup-closed-by-user') {
+        console.error('sign-in error:', err)
+        setError(`Sign-in failed: ${code ?? 'unknown'}`)
+      }
     } finally {
       setLoading(false)
     }
@@ -94,18 +52,15 @@ export default function Login() {
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Beast Mode June</h1>
         <p className="text-gray-500 dark:text-gray-400 text-sm mb-8">Track goals. Stay accountable.</p>
 
-        {loading && (
-          <p className="text-gray-400 dark:text-gray-500 text-sm text-center">Loading...</p>
-        )}
-
-        {!loading && step === 'google' && (
+        {step === 'google' && (
           <>
             <button
               onClick={handleGoogleSignIn}
-              className="w-full flex items-center justify-center gap-3 bg-white text-gray-900 font-medium rounded-lg px-4 py-3 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 transition"
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-3 bg-white text-gray-900 font-medium rounded-lg px-4 py-3 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 transition disabled:opacity-50"
             >
               <GoogleIcon />
-              Sign in with Google
+              {loading ? 'Signing in…' : 'Sign in with Google'}
             </button>
             {error && <p className="mt-3 text-red-500 dark:text-red-400 text-sm">{error}</p>}
           </>
