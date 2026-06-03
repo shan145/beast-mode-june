@@ -40,8 +40,8 @@ export default function CelebrationGift({ fromName, onDismiss }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/85 cursor-pointer select-none"
-      onClick={onDismiss}
+      className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/85 select-none ${phase === 'revealed' ? 'cursor-pointer' : 'cursor-default'}`}
+      onClick={phase === 'revealed' ? onDismiss : undefined}
     >
       <div className="flex flex-col items-center gap-8">
         {/* Gift box — hidden after revealed */}

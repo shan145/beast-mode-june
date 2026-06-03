@@ -24,6 +24,8 @@ export async function registerPushSubscription(): Promise<boolean> {
 
   try {
     const reg = await navigator.serviceWorker.register('/sw.js')
+    // If a new version is waiting (paused state), tell it to activate immediately.
+    if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' })
     await navigator.serviceWorker.ready
 
     let sub = await reg.pushManager.getSubscription()
