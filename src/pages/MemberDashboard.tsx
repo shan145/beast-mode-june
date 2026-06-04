@@ -75,6 +75,7 @@ export default function MemberDashboard() {
   const { completions, loading: completionsLoading } = useCompletions(uid)
   const [tab, setTab] = useState<Tab>('today')
   const [beastSent, setBeastSent] = useState(false)
+  const [celebSent, setCelebSent] = useState(false)
 
   const loading = userLoading || goalsLoading || completionsLoading
   const isCurrentUser = firebaseUser?.uid === uid
@@ -86,6 +87,11 @@ export default function MemberDashboard() {
     return dailyGoals.every(g => completions.some(c => c.goalId === g.id && c.date === today))
   }, [goals, completions])
 
+  const anyCompletionToday = useMemo(() => {
+    const today = todayET()
+    return completions.some(c => c.date === today)
+  }, [completions])
+
   async function handleBeast() {
     const currentUser = auth.currentUser
     if (!currentUser || !uid) return
@@ -94,6 +100,16 @@ export default function MemberDashboard() {
     const toName = user?.displayName || user?.email || 'Someone'
     sendNotification('gift-sent', { userName: fromName, toName, toUserId: uid }, { recipientIds: [uid] })
     setTimeout(() => setBeastSent(false), 1500)
+  }
+
+  async function handleCelebration() {
+    const currentUser = auth.currentUser
+    if (!currentUser || !uid) return
+    setCelebSent(true)
+    const fromName = ownProfile?.displayName ?? currentUser.displayName ?? 'Someone'
+    const toName = user?.displayName || user?.email || 'Someone'
+    sendNotification('celebration-sent', { userName: fromName, toName, toUserId: uid }, { recipientIds: [uid] })
+    setTimeout(() => setCelebSent(false), 1500)
   }
 
   const displayName = user?.displayName || user?.email || 'Member'
@@ -124,19 +140,6 @@ export default function MemberDashboard() {
         </div>
 
         <div className="ml-auto flex items-center gap-2 shrink-0">
-          {!isCurrentUser && allDailyDone && (
-            <button
-              onClick={handleBeast}
-              disabled={beastSent}
-              className={`text-xs font-semibold px-2.5 py-1 rounded-full transition
-                ${beastSent
-                  ? 'bg-orange-100 dark:bg-orange-950 text-orange-400 cursor-default'
-                  : 'bg-orange-500 hover:bg-orange-400 text-white'
-                }`}
-            >
-              {beastSent ? 'Sent!' : 'Beast!'}
-            </button>
-          )}
           <span className="text-xs text-gray-400 dark:text-gray-600">view only</span>
           <button
             onClick={toggleTheme}
@@ -158,12 +161,52 @@ export default function MemberDashboard() {
         ) : (
           <div key={tab} className="tab-fade-in">
             {tab === 'today' && uid && (
-              <DailyChecklist
-                userId={uid}
-                goals={goals}
-                completions={completions}
-                readOnly
-              />
+              <>
+                {!isCurrentUser && allDailyDone && (
+                  <div className="mb-6 rounded-2xl bg-orange-500 px-5 py-4 flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-white font-bold">🔥 All tasks done today!</p>
+                      <p className="text-orange-100 text-sm mt-0.5 truncate">{displayName} is in beast mode</p>
+                    </div>
+                    <button
+                      onClick={handleBeast}
+                      disabled={beastSent}
+                      className={`shrink-0 text-sm font-bold px-4 py-2.5 rounded-xl transition
+                        ${beastSent
+                          ? 'bg-white/20 text-white/60 cursor-default'
+                          : 'bg-white text-orange-500 hover:bg-orange-50 active:bg-orange-100 shadow-sm'
+                        }`}
+                    >
+                      {beastSent ? 'Sent! 🎉' : 'Send Beast Kudos'}
+                    </button>
+                  </div>
+                )}
+                {!isCurrentUser && !allDailyDone && anyCompletionToday && (
+                  <div className="mb-6 rounded-2xl bg-sky-500 px-5 py-4 flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-white font-bold">🎆 Making progress today!</p>
+                      <p className="text-sky-100 text-sm mt-0.5 truncate">{displayName} is putting in the work</p>
+                    </div>
+                    <button
+                      onClick={handleCelebration}
+                      disabled={celebSent}
+                      className={`shrink-0 text-sm font-bold px-4 py-2.5 rounded-xl transition
+                        ${celebSent
+                          ? 'bg-white/20 text-white/60 cursor-default'
+                          : 'bg-white text-sky-500 hover:bg-sky-50 active:bg-sky-100 shadow-sm'
+                        }`}
+                    >
+                      {celebSent ? 'Sent! 🎉' : 'Send Celebration'}
+                    </button>
+                  </div>
+                )}
+                <DailyChecklist
+                  userId={uid}
+                  goals={goals}
+                  completions={completions}
+                  readOnly
+                />
+              </>
             )}
 
             {tab === 'calendar' && (

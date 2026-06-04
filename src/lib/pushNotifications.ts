@@ -63,6 +63,7 @@ export type NotificationType =
   | 'weekly-complete'
   | 'kudos-received'
   | 'gift-sent'
+  | 'celebration-sent'
 
 interface NotifyOptions {
   recipientIds?: string[]   // notify only these users

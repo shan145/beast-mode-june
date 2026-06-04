@@ -138,12 +138,12 @@ export default function DailyChecklist({ userId, goals, completions, readOnly }:
       setTimeout(fireWeeklyCelebration, 300)
       setCelebration('weekly')
       // Worker enforces once-per-week idempotency via KV
-      sendNotification('weekly-complete', { userName: name, weekStart: ws }, { excludeUserId: userId })
+      sendNotification('weekly-complete', { userName: name, weekStart: ws, userId }, { excludeUserId: userId })
     } else if (nowDailyDone && !wasDailyDone) {
       setTimeout(fireDailyCelebration, 300)
       setCelebration('daily')
       // Worker enforces once-per-day idempotency via KV
-      sendNotification('daily-complete', { userName: name, date: today }, { excludeUserId: userId })
+      sendNotification('daily-complete', { userName: name, date: today, userId }, { excludeUserId: userId })
     } else if (task.goal.frequency.type === 'weekly') {
       setCelebration('weekly-log')
     }
