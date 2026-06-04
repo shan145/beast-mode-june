@@ -41,17 +41,16 @@ export default function ReactionBar({ postId, postAuthorId, currentUserId, userM
   const [hoveredEmoji, setHoveredEmoji] = useState<string | null>(null)
   const [tooltipAnchor, setTooltipAnchor] = useState<{ x: number; y: number } | null>(null)
 
-  // Long-press state for mobile
+  // Long-press / bottom-sheet state for mobile
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const didLongPress = useRef(false)
-  const [mobileTooltip, setMobileTooltip] = useState<{ emoji: string; x: number; y: number } | null>(null)
+  const [sheetEmoji, setSheetEmoji] = useState<string | null>(null)
 
-  function startLongPress(emoji: string, e: React.TouchEvent<HTMLButtonElement>) {
+  function startLongPress(emoji: string) {
     didLongPress.current = false
-    const rect = e.currentTarget.getBoundingClientRect()
     longPressTimer.current = setTimeout(() => {
       didLongPress.current = true
-      setMobileTooltip({ emoji, x: rect.left + rect.width / 2, y: rect.top })
+      setSheetEmoji(emoji)
     }, 400)
   }
 
@@ -126,7 +125,7 @@ export default function ReactionBar({ postId, postAuthorId, currentUserId, userM
             setHoveredEmoji(null)
             setTooltipAnchor(null)
           }}
-          onTouchStart={e => startLongPress(emoji, e)}
+          onTouchStart={() => startLongPress(emoji)}
           onTouchEnd={cancelLongPress}
           onTouchMove={cancelLongPress}
           className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-sm border transition select-none
@@ -142,22 +141,25 @@ export default function ReactionBar({ postId, postAuthorId, currentUserId, userM
         </button>
       ))}
 
-      {/* Mobile long-press tooltip */}
-      {mobileTooltip && groups[mobileTooltip.emoji] && (
+      {/* Mobile long-press bottom sheet */}
+      {sheetEmoji && groups[sheetEmoji] && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setMobileTooltip(null)} />
-          <div
-            className="z-50 pointer-events-none"
-            style={{ position: 'fixed', left: mobileTooltip.x, top: mobileTooltip.y - 8, transform: 'translate(-50%, -100%)' }}
-          >
-            <div className="bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg px-3 py-2 shadow-lg max-w-[220px] text-center leading-relaxed">
-              {groups[mobileTooltip.emoji].uids.map(uid =>
-                uid === currentUserId ? 'You' : (userMap[uid]?.displayName || 'Someone')
-              ).join(', ')}
+          <div className="fixed inset-0 z-40 bg-black/40" onClick={() => setSheetEmoji(null)} />
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 rounded-t-2xl shadow-2xl pb-safe">
+            <div className="flex justify-center pt-2 pb-1">
+              <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
             </div>
-            <div className="flex justify-center">
-              <div className="border-4 border-transparent border-t-gray-900 dark:border-t-gray-700" />
+            <div className="px-5 pb-2 pt-1">
+              <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-3">{sheetEmoji} Reacted</p>
+              <ul className="space-y-3">
+                {groups[sheetEmoji].uids.map(uid => (
+                  <li key={uid} className="text-sm font-medium text-gray-900 dark:text-white">
+                    {uid === currentUserId ? 'You' : (userMap[uid]?.displayName || 'Someone')}
+                  </li>
+                ))}
+              </ul>
             </div>
+            <div className="h-6" />
           </div>
         </>
       )}

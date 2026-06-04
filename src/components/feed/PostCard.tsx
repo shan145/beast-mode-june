@@ -44,6 +44,7 @@ export default function PostCard({ post, author, isOwn, currentUserId, userMap, 
   const [imgIdx, setImgIdx] = useState(0)
   const [dragOffset, setDragOffset] = useState(0)
   const touchStartX = useRef(0)
+  const touchStartY = useRef(0)
   const didDrag = useRef(false)
 
   const [lightboxOpen, setLightboxOpen] = useState(false)
@@ -60,25 +61,29 @@ export default function PostCard({ post, author, isOwn, currentUserId, userMap, 
 
   function handleTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
     didDrag.current = false
   }
 
   function handleTouchMove(e: React.TouchEvent) {
-    const delta = e.touches[0].clientX - touchStartX.current
-    if (Math.abs(delta) > 8) didDrag.current = true
-    const atStart = imgIdx === 0 && delta > 0
-    const atEnd = imgIdx === n - 1 && delta < 0
-    setDragOffset(atStart || atEnd ? delta * 0.25 : delta)
+    const dx = e.touches[0].clientX - touchStartX.current
+    const dy = e.touches[0].clientY - touchStartY.current
+    // Any significant movement — including vertical scroll — suppresses tap-to-open
+    if (Math.abs(dx) > 8 || Math.abs(dy) > 8) didDrag.current = true
+    const atStart = imgIdx === 0 && dx > 0
+    const atEnd = imgIdx === n - 1 && dx < 0
+    setDragOffset(atStart || atEnd ? dx * 0.25 : dx)
   }
 
   function handleTouchEnd(e: React.TouchEvent) {
-    const delta = e.changedTouches[0].clientX - touchStartX.current
+    const dx = e.changedTouches[0].clientX - touchStartX.current
+    const dy = e.changedTouches[0].clientY - touchStartY.current
     if (!didDrag.current) {
       openLightbox(imgIdx)
-    } else if (delta < -50 && imgIdx < n - 1) {
-      setImgIdx(i => i + 1)
-    } else if (delta > 50 && imgIdx > 0) {
-      setImgIdx(i => i - 1)
+    } else if (Math.abs(dx) > Math.abs(dy)) {
+      // Horizontal swipe — navigate between images
+      if (dx < -50 && imgIdx < n - 1) setImgIdx(i => i + 1)
+      else if (dx > 50 && imgIdx > 0) setImgIdx(i => i - 1)
     }
     setDragOffset(0)
   }
@@ -89,11 +94,13 @@ export default function PostCard({ post, author, isOwn, currentUserId, userMap, 
   }
 
   function handleLbTouchStart(e: React.TouchEvent) {
+    if (e.touches.length > 1) return // let browser handle pinch-to-zoom
     lbTouchStartX.current = e.touches[0].clientX
     lbDidDrag.current = false
   }
 
   function handleLbTouchMove(e: React.TouchEvent) {
+    if (e.touches.length > 1) return // let browser handle pinch-to-zoom
     const delta = e.touches[0].clientX - lbTouchStartX.current
     if (Math.abs(delta) > 8) lbDidDrag.current = true
     const atStart = lightboxIdx === 0 && delta > 0
@@ -102,6 +109,7 @@ export default function PostCard({ post, author, isOwn, currentUserId, userMap, 
   }
 
   function handleLbTouchEnd(e: React.TouchEvent) {
+    if (e.touches.length > 0) return // finger still down (e.g. releasing from pinch)
     e.preventDefault() // suppress synthetic click so underlying elements don't fire after close
     const delta = e.changedTouches[0].clientX - lbTouchStartX.current
     if (lbDidDrag.current) {
@@ -245,7 +253,7 @@ export default function PostCard({ post, author, isOwn, currentUserId, userMap, 
       {lightboxOpen && (
         <div
           className="fixed inset-0 z-50 bg-black overflow-hidden"
-          style={{ touchAction: 'none' }}
+          style={{ touchAction: 'pinch-zoom' }}
           onTouchStart={handleLbTouchStart}
           onTouchMove={handleLbTouchMove}
           onTouchEnd={handleLbTouchEnd}
