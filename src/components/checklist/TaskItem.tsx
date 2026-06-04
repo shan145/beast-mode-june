@@ -41,13 +41,13 @@ export default function TaskItem({ goal, checked, weekCount, locked, readOnly, o
       </button>
 
       <div className="flex-1 min-w-0">
-        <p className={`text-sm font-medium leading-tight truncate transition-colors ${
+        <p className={`text-sm font-medium leading-tight transition-colors ${
           checked ? 'text-gray-400 dark:text-gray-400 line-through' : 'text-gray-900 dark:text-white'
         }`}>
           {goal.title}
         </p>
         {goal.description && (
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">{goal.description}</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{goal.description}</p>
         )}
       </div>
 
