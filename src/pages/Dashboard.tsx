@@ -122,7 +122,7 @@ export default function Dashboard() {
     return result
   }, [users, allCompletions])
 
-  const tab = (searchParams.get('tab') as Tab) ?? 'feed'
+  const tab = (searchParams.get('tab') as Tab) ?? (localStorage.getItem('beast_mode_tab') as Tab) ?? 'today'
   const celebrationName = searchParams.get('celebration')
   const fireworksName = searchParams.get('fireworks')
 
@@ -209,7 +209,7 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <NavTabs tabs={TABS} active={tab} onChange={t => setSearchParams({ tab: t })} />
+      <NavTabs tabs={TABS} active={tab} onChange={t => { localStorage.setItem('beast_mode_tab', t); setSearchParams({ tab: t }) }} />
 
       <main className="max-w-2xl mx-auto px-6 pt-8 pb-28 md:pb-8">
         {loading ? (
