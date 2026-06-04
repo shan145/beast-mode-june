@@ -23,7 +23,10 @@ export async function registerPushSubscription(): Promise<boolean> {
   if (permission !== 'granted') return false
 
   try {
-    const reg = await navigator.serviceWorker.register('/sw.js')
+    // Reuse the registration that main.tsx already created; fall back to registering
+    // here only if it somehow wasn't registered yet (e.g. in a test environment).
+    const reg = await navigator.serviceWorker.getRegistration('/sw.js')
+      ?? await navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
     // If a new version is waiting (paused state), tell it to activate immediately.
     if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' })
     await navigator.serviceWorker.ready
