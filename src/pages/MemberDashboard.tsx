@@ -163,10 +163,10 @@ export default function MemberDashboard() {
             {tab === 'today' && uid && (
               <>
                 {!isCurrentUser && allDailyDone && (
-                  <div className="mb-6 rounded-2xl bg-orange-500 px-5 py-4 flex items-center justify-between gap-4">
-                    <div className="min-w-0">
+                  <div className="mb-6 rounded-2xl bg-orange-500 px-5 py-4 flex flex-col sm:flex-row sm:items-center items-center gap-3">
+                    <div className="flex-1 min-w-0 text-center sm:text-left">
                       <p className="text-white font-bold">🔥 All tasks done today!</p>
-                      <p className="text-orange-100 text-sm mt-0.5 truncate">{displayName} is in beast mode</p>
+                      <p className="text-orange-100 text-sm mt-0.5">{displayName} is in beast mode</p>
                     </div>
                     <button
                       onClick={handleBeast}
@@ -182,10 +182,10 @@ export default function MemberDashboard() {
                   </div>
                 )}
                 {!isCurrentUser && !allDailyDone && anyCompletionToday && (
-                  <div className="mb-6 rounded-2xl bg-sky-500 px-5 py-4 flex items-center justify-between gap-4">
-                    <div className="min-w-0">
+                  <div className="mb-6 rounded-2xl bg-sky-500 px-5 py-4 flex flex-col sm:flex-row sm:items-center items-center gap-3">
+                    <div className="flex-1 min-w-0 text-center sm:text-left">
                       <p className="text-white font-bold">🎆 Making progress today!</p>
-                      <p className="text-sky-100 text-sm mt-0.5 truncate">{displayName} is putting in the work</p>
+                      <p className="text-sky-100 text-sm mt-0.5">{displayName} is putting in the work</p>
                     </div>
                     <button
                       onClick={handleCelebration}
