@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { ThemeProvider } from '@/contexts/ThemeContext'
+import { useVersionPolling } from '@/hooks/useVersionPolling'
 import Login from '@/pages/Login'
 import Dashboard from '@/pages/Dashboard'
 import MemberDashboard from '@/pages/MemberDashboard'
@@ -14,6 +15,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  useVersionPolling()
   return (
     <ThemeProvider>
     <BrowserRouter>
