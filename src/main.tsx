@@ -9,6 +9,11 @@ navigator.serviceWorker?.addEventListener('message', event => {
   }
 })
 
+// When a new service worker takes over, reload to get the latest assets.
+navigator.serviceWorker?.addEventListener('controllerchange', () => {
+  window.location.reload()
+})
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
