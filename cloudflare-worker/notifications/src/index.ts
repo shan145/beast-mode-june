@@ -118,14 +118,18 @@ function buildPayload(type: string, p: Record<string, unknown>): NotificationPay
     case 'feed-comment':
       return { title: 'Beast Mode', body: `${name} commented on a post`, tag: `comment-${p.postId}`, data: { url: `/?tab=feed&post=${p.postId}` } }
     case 'daily-complete':
-      return { title: 'Beast Mode', body: `${name} crushed all their tasks today!`, tag: `daily-${p.date}`, data: { url: `/?tab=feed&celebration=${encodeURIComponent(name)}` } }
+      return { title: 'Beast Mode', body: `${name} crushed all their tasks today!`, tag: `daily-${p.date}`, data: { url: p.userId ? `/member/${p.userId}` : '/' } }
     case 'weekly-complete':
-      return { title: 'Beast Mode', body: `${name} completed all goals for the week!`, tag: `weekly-${p.weekStart}`, data: { url: '/?tab=today' } }
+      return { title: 'Beast Mode', body: `${name} completed all goals for the week!`, tag: `weekly-${p.weekStart}`, data: { url: p.userId ? `/member/${p.userId}` : '/' } }
     case 'kudos-received':
       return { title: 'Beast Mode', body: `${name} says you're a beast!`, tag: 'kudos', data: { url: '/?tab=community' } }
     case 'gift-sent': {
       const toName = (p.toName as string | undefined) ?? 'You'
       return { title: 'Beast Mode', body: `${name} sent you a beast kudos`, tag: `gift-${p.toUserId ?? ''}`, data: { url: `/?tab=feed&celebration=${encodeURIComponent(toName)}` } }
+    }
+    case 'celebration-sent': {
+      const toName = (p.toName as string | undefined) ?? 'You'
+      return { title: 'Beast Mode', body: `${name} is cheering you on! 🎆`, tag: `celebration-${p.toUserId ?? ''}`, data: { url: `/?tab=feed&fireworks=${encodeURIComponent(toName)}` } }
     }
     default:
       return null

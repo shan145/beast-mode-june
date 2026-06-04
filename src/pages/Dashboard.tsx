@@ -22,6 +22,7 @@ import Leaderboard from '@/components/community/Leaderboard'
 import Feed from '@/components/feed/Feed'
 import NavTabs, { type TabDef } from '@/components/ui/NavTabs'
 import CelebrationGift from '@/components/ui/CelebrationGift'
+import CelebrationFireworks from '@/components/ui/CelebrationFireworks'
 import type { Goal } from '@/types'
 
 type Tab = 'today' | 'calendar' | 'community' | 'feed' | 'goals'
@@ -111,11 +112,26 @@ export default function Dashboard() {
     return result
   }, [users, allGoals, allCompletions])
 
+  // Compute which members have any completion today (for celebration button)
+  const anyCompletionTodayByUser = useMemo(() => {
+    const today = todayET()
+    const result: Record<string, boolean> = {}
+    for (const user of users) {
+      result[user.uid] = allCompletions.some(c => c.userId === user.uid && c.date === today)
+    }
+    return result
+  }, [users, allCompletions])
+
   const tab = (searchParams.get('tab') as Tab) ?? 'feed'
   const celebrationName = searchParams.get('celebration')
+  const fireworksName = searchParams.get('fireworks')
 
   function dismissCelebration() {
     setSearchParams(p => { p.delete('celebration'); return p }, { replace: true })
+  }
+
+  function dismissFireworks() {
+    setSearchParams(p => { p.delete('fireworks'); return p }, { replace: true })
   }
 
   // Register push subscription once on mount — silently skips if permission denied
@@ -152,6 +168,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white">
       {celebrationName && <CelebrationGift fromName={celebrationName} onDismiss={dismissCelebration} />}
+      {fireworksName && <CelebrationFireworks fromName={fireworksName} onDismiss={dismissFireworks} />}
       <header className="border-b border-gray-200 dark:border-gray-800 px-6 pb-4 flex items-center justify-between" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1rem)' }}>
         <h1 className="text-lg font-bold text-orange-500">Beast Mode June</h1>
         <div className="flex items-center gap-3">
@@ -244,6 +261,7 @@ export default function Dashboard() {
                           member={member}
                           isYou={member.uid === firebaseUser?.uid}
                           allDailyDoneToday={allDailyDoneTodayByUser[member.uid]}
+                          anyCompletionToday={anyCompletionTodayByUser[member.uid]}
                           currentUserName={ownProfile?.displayName}
                           onClick={() => navigate(`/member/${member.uid}`)}
                         />
