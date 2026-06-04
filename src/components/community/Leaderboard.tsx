@@ -36,8 +36,8 @@ export default function Leaderboard({ users, allGoals, allCompletions, allPosts,
   const today = todayET()
 
   const metrics = useMemo(
-    () => computeLeaderboard(users, allGoals, allCompletions, allPosts, today),
-    [users, allGoals, allCompletions, allPosts, today],
+    () => computeLeaderboard(users, allGoals, allCompletions, allPosts, today, currentUserId),
+    [users, allGoals, allCompletions, allPosts, today, currentUserId],
   )
 
   const metric = metrics[idx]
@@ -70,8 +70,8 @@ export default function Leaderboard({ users, allGoals, allCompletions, allPosts,
     return [...map.entries()].map(([rank, entries]) => ({ rank, entries }))
   }, [metric])
 
-  function renderPersonRow(entry: RankEntry, showMedal: boolean, isLast: boolean) {
-    const medal = MEDALS[entry.rank] ?? MEDALS[3]
+  function renderPersonRow(entry: RankEntry, showRankBadge: boolean, isLast: boolean) {
+    const medal = MEDALS[entry.rank]
     const isYou = entry.uid === currentUserId
     const name = nameMap[entry.uid] ?? 'Unknown'
     const pct = metric.maxScore > 0 ? (entry.score / metric.maxScore) * 100 : 0
@@ -84,14 +84,20 @@ export default function Leaderboard({ users, allGoals, allCompletions, allPosts,
           isYou ? 'bg-orange-50 dark:bg-orange-950/20' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
         } ${!isLast ? 'border-b border-gray-100 dark:border-gray-800' : ''}`}
       >
-        {/* Medal or spacer */}
-        {showMedal ? (
-          <div
-            className="w-10 h-10 rounded-full flex items-center justify-center font-black text-sm shrink-0 shadow-sm"
-            style={{ background: medal.gradient, color: medal.text }}
-          >
-            {entry.rank}
-          </div>
+        {/* Rank badge, medal, or spacer */}
+        {showRankBadge ? (
+          medal ? (
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center font-black text-sm shrink-0 shadow-sm"
+              style={{ background: medal.gradient, color: medal.text }}
+            >
+              {entry.rank}
+            </div>
+          ) : (
+            <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400">
+              {entry.rank}
+            </div>
+          )
         ) : (
           <div className="w-10 h-10 shrink-0" />
         )}
@@ -117,7 +123,7 @@ export default function Leaderboard({ users, allGoals, allCompletions, allPosts,
           <div className="mt-1.5 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-500"
-              style={{ width: `${pct}%`, backgroundColor: medal.bar }}
+              style={{ width: `${pct}%`, backgroundColor: medal?.bar ?? '#f97316' }}
             />
           </div>
         </div>
@@ -223,7 +229,7 @@ export default function Leaderboard({ users, allGoals, allCompletions, allPosts,
       )}
 
       {/* Rank groups */}
-      <div className="divide-y divide-gray-100 dark:divide-gray-800">
+      <div>
         {rankGroups.length === 0 ? (
           <p className="text-center text-gray-400 dark:text-gray-500 text-sm py-8">
             No activity yet.
@@ -234,10 +240,10 @@ export default function Leaderboard({ users, allGoals, allCompletions, allPosts,
             const isGroupExpanded = expanded.has(groupKey)
             const hidden = entries.slice(1)
             const hasMore = hidden.length > 0
-            const isLastGroup = groupIdx === rankGroups.length - 1
+            const isLastGroup = groupIdx === rankGroups.length - 1 && !metric.myEntry
 
             return (
-              <div key={rank}>
+              <div key={rank} className="border-b border-gray-100 dark:border-gray-800 last:border-b-0">
                 {/* First person — always visible */}
                 {renderPersonRow(entries[0], true, !hasMore && isLastGroup)}
 
@@ -250,9 +256,7 @@ export default function Leaderboard({ users, allGoals, allCompletions, allPosts,
                 {hasMore && (
                   <button
                     onClick={() => toggleGroup(groupKey)}
-                    className={`w-full flex items-center gap-2 px-5 py-2.5 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50 ${
-                      !isLastGroup || isGroupExpanded ? 'border-b border-gray-100 dark:border-gray-800' : ''
-                    }`}
+                    className="w-full flex items-center gap-2 px-5 py-2.5 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
                   >
                     {/* Spacer aligns with avatar column */}
                     <div className="w-10 h-4 shrink-0" />
@@ -296,6 +300,18 @@ export default function Leaderboard({ users, allGoals, allCompletions, allPosts,
               </div>
             )
           })
+        )}
+
+        {/* Current user's rank when they're outside the top 3 */}
+        {metric.myEntry && (
+          <>
+            <div className="flex items-center gap-4 px-5 py-2 border-t border-dashed border-gray-200 dark:border-gray-700">
+              <div className="flex-1 h-px bg-transparent" />
+              <span className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider whitespace-nowrap">your rank</span>
+              <div className="flex-1 h-px bg-transparent" />
+            </div>
+            {renderPersonRow(metric.myEntry, true, true)}
+          </>
         )}
       </div>
     </div>

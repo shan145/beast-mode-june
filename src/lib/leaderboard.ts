@@ -30,6 +30,7 @@ export interface LeaderboardMetric {
   description: string
   maxScore: number
   entries: RankEntry[]
+  myEntry?: RankEntry  // current user's rank when they're not in the top-3 entries
 }
 
 interface UserStats {
@@ -120,15 +121,42 @@ function computeStats(
   return { beastScore, perfectDays, totalSessions, longestStreak, feedPosts, postDays, weeklyGoalsMet }
 }
 
+const EMPTY_STATS: UserStats = { beastScore: 0, perfectDays: 0, totalSessions: 0, longestStreak: 0, feedPosts: 0, postDays: 0, weeklyGoalsMet: 0 }
+
+function getUserRankEntry(
+  uid: string,
+  eligibleUsers: UserProfile[],
+  getValue: (s: UserStats) => number,
+  formatLabel: (n: number) => string,
+  statsMap: Map<string, UserStats>,
+): RankEntry | undefined {
+  if (!eligibleUsers.some(u => u.uid === uid)) return undefined
+  const sorted = eligibleUsers
+    .map(u => ({ uid: u.uid, score: getValue(statsMap.get(u.uid) ?? EMPTY_STATS) }))
+    .sort((a, b) => b.score - a.score)
+
+  let i = 0
+  let rank = 1
+  while (i < sorted.length) {
+    const score = sorted[i].score
+    const tierStart = i
+    while (i < sorted.length && sorted[i].score === score) i++
+    if (sorted.slice(tierStart, i).some(e => e.uid === uid)) {
+      return { rank, uid, score, scoreLabel: formatLabel(score) }
+    }
+    rank++
+  }
+  return undefined
+}
+
 function getTop3(
   users: UserProfile[],
   getValue: (s: UserStats) => number,
   formatLabel: (n: number) => string,
   statsMap: Map<string, UserStats>,
 ): { entries: RankEntry[]; maxScore: number } {
-  const EMPTY: UserStats = { beastScore: 0, perfectDays: 0, totalSessions: 0, longestStreak: 0, feedPosts: 0, postDays: 0, weeklyGoalsMet: 0 }
   const sorted = users
-    .map(u => ({ uid: u.uid, score: getValue(statsMap.get(u.uid) ?? EMPTY) }))
+    .map(u => ({ uid: u.uid, score: getValue(statsMap.get(u.uid) ?? EMPTY_STATS) }))
     .sort((a, b) => b.score - a.score)
 
   const maxScore = sorted[0]?.score ?? 0
@@ -155,6 +183,7 @@ export function computeLeaderboard(
   allCompletions: Completion[],
   allPosts: Post[],
   today: string,
+  currentUserId?: string,
 ): LeaderboardMetric[] {
   const statsMap = new Map<string, UserStats>()
   for (const user of users) {
@@ -162,8 +191,13 @@ export function computeLeaderboard(
   }
 
   const top3 = (get: (s: UserStats) => number, fmt: (n: number) => string, subset?: UserProfile[]) => {
-    const { entries, maxScore } = getTop3(subset ?? users, get, fmt, statsMap)
-    return { entries, maxScore }
+    const eligible = subset ?? users
+    const { entries, maxScore } = getTop3(eligible, get, fmt, statsMap)
+    let myEntry: RankEntry | undefined
+    if (currentUserId && !entries.some(e => e.uid === currentUserId)) {
+      myEntry = getUserRankEntry(currentUserId, eligible, get, fmt, statsMap)
+    }
+    return { entries, maxScore, myEntry }
   }
 
   // Only include users who actually have daily goals in the consistency ranking
