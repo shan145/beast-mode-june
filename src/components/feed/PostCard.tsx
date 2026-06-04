@@ -115,8 +115,6 @@ export default function PostCard({ post, author, isOwn, currentUserId, userMap, 
     if (lbDidDrag.current) {
       if (delta < -50 && lightboxIdx < n - 1) setLightboxIdx(i => i + 1)
       else if (delta > 50 && lightboxIdx > 0) setLightboxIdx(i => i - 1)
-    } else {
-      setLightboxOpen(false)
     }
     setLbDragOffset(0)
   }
