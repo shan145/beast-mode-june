@@ -52,6 +52,7 @@ export default function PostCard({ post, author, isOwn, currentUserId, userMap, 
   const [lbDragOffset, setLbDragOffset] = useState(0)
   const lbTouchStartX = useRef(0)
   const lbDidDrag = useRef(false)
+  const lbIsPinching = useRef(false)
 
   const name = author?.displayName || author?.email || 'Unknown'
   const color = avatarColor(post.userId)
@@ -94,13 +95,28 @@ export default function PostCard({ post, author, isOwn, currentUserId, userMap, 
   }
 
   function handleLbTouchStart(e: React.TouchEvent) {
-    if (e.touches.length > 1) return // let browser handle pinch-to-zoom
+    if (e.touches.length > 1) {
+      lbIsPinching.current = true
+      setLbDragOffset(0)
+      return
+    }
     lbTouchStartX.current = e.touches[0].clientX
     lbDidDrag.current = false
   }
 
   function handleLbTouchMove(e: React.TouchEvent) {
-    if (e.touches.length > 1) return // let browser handle pinch-to-zoom
+    if (e.touches.length > 1) {
+      lbIsPinching.current = true
+      setLbDragOffset(0)
+      return
+    }
+    // Re-anchor after pinch ends so the stale start position doesn't cause a jump
+    if (lbIsPinching.current) {
+      lbIsPinching.current = false
+      lbTouchStartX.current = e.touches[0].clientX
+      lbDidDrag.current = false
+      return
+    }
     const delta = e.touches[0].clientX - lbTouchStartX.current
     if (Math.abs(delta) > 8) lbDidDrag.current = true
     const atStart = lightboxIdx === 0 && delta > 0
@@ -109,7 +125,16 @@ export default function PostCard({ post, author, isOwn, currentUserId, userMap, 
   }
 
   function handleLbTouchEnd(e: React.TouchEvent) {
-    if (e.touches.length > 0) return // finger still down (e.g. releasing from pinch)
+    if (e.touches.length > 0) {
+      // Transitioning from multi-touch to single — re-anchor so next swipe starts clean
+      if (e.touches.length === 1) {
+        lbIsPinching.current = false
+        lbTouchStartX.current = e.touches[0].clientX
+        lbDidDrag.current = false
+      }
+      return
+    }
+    lbIsPinching.current = false
     e.preventDefault() // suppress synthetic click so underlying elements don't fire after close
     const delta = e.changedTouches[0].clientX - lbTouchStartX.current
     if (lbDidDrag.current) {
