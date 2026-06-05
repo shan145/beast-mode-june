@@ -46,11 +46,19 @@ jobs:
           channelId: live
           projectId: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
 
+      - name: Install Notifications Worker dependencies
+        working-directory: workers/notifications
+        run: npm ci
+
       - name: Deploy Notifications Worker
         working-directory: workers/notifications
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: npx wrangler deploy --env production
+
+      - name: Install API Worker dependencies
+        working-directory: workers/api
+        run: npm ci
 
       - name: Deploy API Worker
         working-directory: workers/api
