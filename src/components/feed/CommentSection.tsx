@@ -127,7 +127,7 @@ export default function CommentSection({ postId, postAuthorId, currentUserId, us
                       onChange={e => setEditText(e.target.value)}
                       onKeyDown={e => e.key === 'Escape' && setEditingId(null)}
                       maxLength={500}
-                      className="flex-1 text-sm bg-gray-100 dark:bg-gray-800 rounded-full px-3 py-1 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-orange-400 transition"
+                      className="flex-1 text-base md:text-sm bg-gray-100 dark:bg-gray-800 rounded-full px-3 py-1 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-orange-400 transition"
                     />
                     <button type="submit" className="text-xs font-semibold text-orange-500 hover:text-orange-400 shrink-0">Save</button>
                     <button type="button" onClick={() => setEditingId(null)} className="text-xs text-gray-400 hover:text-gray-600 shrink-0">Cancel</button>
@@ -202,7 +202,7 @@ export default function CommentSection({ postId, postAuthorId, currentUserId, us
           onChange={e => setText(e.target.value)}
           placeholder="Add a comment…"
           maxLength={500}
-          className="flex-1 text-sm bg-gray-100 dark:bg-gray-800 rounded-full px-3 py-1.5 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 outline-none focus:ring-2 focus:ring-orange-400 transition"
+          className="flex-1 text-base md:text-sm bg-gray-100 dark:bg-gray-800 rounded-full px-3 py-1.5 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 outline-none focus:ring-2 focus:ring-orange-400 transition"
         />
         {text.trim() && (
           <button
