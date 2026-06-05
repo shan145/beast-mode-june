@@ -290,9 +290,11 @@ export function computeLeaderboard(
 
 // ── Beast Score breakdown ────────────────────────────────────────────────────
 
+export type BreakdownChip = { text: string; color: 'green' | 'red' | 'orange' | 'gray' }
+
 export interface BreakdownLine {
   label: string
-  detail?: string
+  parts?: BreakdownChip[]
   pts: number
   isBonus?: boolean
 }
@@ -363,10 +365,10 @@ export function computeBeastBreakdown(
       if (missed > 0) perfectDailyWeek = false
       const pts = done * 2 - missed
       weekPts += pts
-      const detailParts: string[] = []
-      if (done > 0) detailParts.push(`${done} done × +2`)
-      if (missed > 0) detailParts.push(`${missed} missed × −1`)
-      lines.push({ label: goal.title, detail: detailParts.join(' · '), pts })
+      const parts: BreakdownChip[] = []
+      if (done > 0) parts.push({ text: `${done} done`, color: 'green' })
+      if (missed > 0) parts.push({ text: `${missed} missed`, color: 'red' })
+      lines.push({ label: goal.title, parts, pts })
     }
     if (perfectDailyWeek && weekDone) {
       weekPts += 10
@@ -390,12 +392,13 @@ export function computeBeastBreakdown(
       }
       const pts = basePts + quotaBonus - penalty
       weekPts += pts
-      const detailParts = [`${effective}/${goal.frequency.daysPerWeek} done × +3`]
-      if (quotaBonus > 0) detailParts.push('+5 quota bonus')
-      if (penalty > 0) detailParts.push(`${goal.frequency.daysPerWeek - count} missed × −2`)
+      const parts: BreakdownChip[] = []
+      parts.push({ text: `${effective}/${goal.frequency.daysPerWeek} sessions`, color: count >= goal.frequency.daysPerWeek ? 'green' : 'orange' })
+      if (quotaBonus > 0) parts.push({ text: 'quota bonus', color: 'orange' })
+      if (penalty > 0) parts.push({ text: `${goal.frequency.daysPerWeek - count} missed`, color: 'red' })
       lines.push({
         label: `${goal.title} (${goal.frequency.daysPerWeek}×/wk)`,
-        detail: detailParts.join(' · '),
+        parts,
         pts,
       })
     }

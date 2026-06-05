@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { computeLeaderboard, computeBeastBreakdown, type RankEntry, type BeastBreakdown } from '@/lib/leaderboard'
+import { computeLeaderboard, computeBeastBreakdown, type RankEntry, type BeastBreakdown, type BreakdownChip } from '@/lib/leaderboard'
 import { todayET } from '@/lib/time'
 import type { UserProfile, Goal, Completion, Post } from '@/types'
 
@@ -419,8 +419,12 @@ function BeastBreakdownModal({ name, breakdown, onClose }: {
                         <p className={`text-sm font-medium ${line.isBonus ? 'text-orange-500 dark:text-orange-400' : 'text-gray-800 dark:text-gray-100'}`}>
                           {line.label}
                         </p>
-                        {line.detail && (
-                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{line.detail}</p>
+                        {line.parts && line.parts.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {line.parts.map((chip, j) => (
+                              <Chip key={j} chip={chip} />
+                            ))}
+                          </div>
                         )}
                       </div>
                       <span className={`text-sm font-bold shrink-0 tabular-nums ${
@@ -454,6 +458,20 @@ function BeastBreakdownModal({ name, breakdown, onClose }: {
         </div>
       </div>
     </div>
+  )
+}
+
+function Chip({ chip }: { chip: BreakdownChip }) {
+  const styles = {
+    green:  'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400',
+    red:    'bg-red-50 text-red-500 dark:bg-red-900/20 dark:text-red-400',
+    orange: 'bg-orange-50 text-orange-500 dark:bg-orange-900/20 dark:text-orange-400',
+    gray:   'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400',
+  }
+  return (
+    <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${styles[chip.color]}`}>
+      {chip.text}
+    </span>
   )
 }
 
