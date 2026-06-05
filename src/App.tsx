@@ -6,6 +6,7 @@ import Login from '@/pages/Login'
 import Dashboard from '@/pages/Dashboard'
 import MemberDashboard from '@/pages/MemberDashboard'
 import Settings from '@/pages/Settings'
+import BeastScoreGuide from '@/pages/BeastScoreGuide'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { firebaseUser, isGroupAuthed, loading } = useAuth()
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/member/:uid" element={<ProtectedRoute><MemberDashboard /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+        <Route path="/scoring" element={<BeastScoreGuide />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
