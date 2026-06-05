@@ -287,3 +287,131 @@ export function computeLeaderboard(
     { id: 'feed-posts',   name: 'Feed Posting',      description: 'Total posts shared to the feed',                         ...top3(s => s.feedPosts,     posts,       undefined)             },
   ]
 }
+
+// ── Beast Score breakdown ────────────────────────────────────────────────────
+
+export interface BreakdownLine {
+  label: string
+  detail?: string
+  pts: number
+  isBonus?: boolean
+}
+
+export interface WeekBreakdown {
+  label: string
+  total: number
+  weekDone: boolean
+  lines: BreakdownLine[]
+}
+
+export interface BeastBreakdown {
+  totalScore: number
+  weeks: WeekBreakdown[]
+  postDays: number
+  postPts: number
+}
+
+function formatWeekLabel(week: { start: string; end: string }): string {
+  const start = week.start < '2026-06-01' ? '2026-06-01' : week.start
+  const end = week.end > '2026-06-30' ? '2026-06-30' : week.end
+  const startDay = Number(start.split('-')[2])
+  const endDay = Number(end.split('-')[2])
+  return `Jun ${startDay}–${endDay}`
+}
+
+export function computeBeastBreakdown(
+  uid: string,
+  allGoals: Goal[],
+  allCompletions: Completion[],
+  allPosts: Post[],
+  today: string,
+): BeastBreakdown {
+  const goals = allGoals.filter(g => g.userId === uid)
+  const comps = allCompletions.filter(c => c.userId === uid)
+  const dailyGoals = goals.filter(g => g.frequency.type === 'daily')
+  const weeklyGoals = goals.filter(g => g.frequency.type === 'weekly')
+
+  const postDaySet = new Set<string>()
+  for (const p of allPosts.filter(p => p.userId === uid)) {
+    if (!p.createdAt) continue
+    const dateStr = toETDateString(p.createdAt.toDate())
+    if (dateStr >= '2026-06-01' && dateStr <= '2026-06-30') postDaySet.add(dateStr)
+  }
+  const postDays = postDaySet.size
+  const postPts = postDays * 2
+
+  let totalScore = postPts
+  const weeks: WeekBreakdown[] = []
+
+  for (const week of JUNE_WEEKS) {
+    if (week.start > today) break
+    const weekDone = week.end <= today
+    const elapsed = daysInWeek(week, today)
+    if (elapsed.length === 0) continue
+
+    const lines: BreakdownLine[] = []
+    let weekPts = 0
+
+    // Daily goals
+    let perfectDailyWeek = dailyGoals.length > 0
+    for (const goal of dailyGoals) {
+      let done = 0, missed = 0
+      for (const date of elapsed) {
+        if (comps.some(c => c.goalId === goal.id && c.date === date)) done++
+        else missed++
+      }
+      if (missed > 0) perfectDailyWeek = false
+      const pts = done * 2 - missed
+      weekPts += pts
+      const detailParts: string[] = []
+      if (done > 0) detailParts.push(`${done} done × +2`)
+      if (missed > 0) detailParts.push(`${missed} missed × −1`)
+      lines.push({ label: goal.title, detail: detailParts.join(' · '), pts })
+    }
+    if (perfectDailyWeek && weekDone) {
+      weekPts += 10
+      lines.push({ label: 'Perfect daily week', pts: 10, isBonus: true })
+    }
+
+    // Weekly goals
+    let allWeeklyMet = weeklyGoals.length > 0
+    for (const goal of weeklyGoals) {
+      const count = comps.filter(
+        c => c.goalId === goal.id && c.date >= week.start && c.date <= week.end
+      ).length
+      const effective = Math.min(count, goal.frequency.daysPerWeek)
+      const basePts = effective * 3
+      let quotaBonus = 0, penalty = 0
+      if (count >= goal.frequency.daysPerWeek) {
+        quotaBonus = 5
+      } else {
+        allWeeklyMet = false
+        if (weekDone) penalty = (goal.frequency.daysPerWeek - count) * 2
+      }
+      const pts = basePts + quotaBonus - penalty
+      weekPts += pts
+      const detailParts = [`${effective}/${goal.frequency.daysPerWeek} done × +3`]
+      if (quotaBonus > 0) detailParts.push('+5 quota bonus')
+      if (penalty > 0) detailParts.push(`${goal.frequency.daysPerWeek - count} missed × −2`)
+      lines.push({
+        label: `${goal.title} (${goal.frequency.daysPerWeek}×/wk)`,
+        detail: detailParts.join(' · '),
+        pts,
+      })
+    }
+    if (allWeeklyMet) {
+      weekPts += 10
+      lines.push({ label: 'All weekly goals met', pts: 10, isBonus: true })
+    }
+
+    if (weekDone && dailyGoals.length > 0 && weeklyGoals.length > 0 && perfectDailyWeek && allWeeklyMet) {
+      weekPts += 25
+      lines.push({ label: 'Beast Week', pts: 25, isBonus: true })
+    }
+
+    totalScore += weekPts
+    weeks.push({ label: formatWeekLabel(week), total: weekPts, weekDone, lines })
+  }
+
+  return { totalScore, weeks, postDays, postPts }
+}

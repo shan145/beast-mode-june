@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { computeLeaderboard, type RankEntry } from '@/lib/leaderboard'
+import { computeLeaderboard, computeBeastBreakdown, type RankEntry, type BeastBreakdown } from '@/lib/leaderboard'
 import { todayET } from '@/lib/time'
 import type { UserProfile, Goal, Completion, Post } from '@/types'
 
@@ -33,6 +33,7 @@ export default function Leaderboard({ users, allGoals, allCompletions, allPosts,
   const [idx, setIdx] = useState(0)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [showInfo, setShowInfo] = useState(false)
+  const [breakdownUid, setBreakdownUid] = useState<string | null>(null)
   const today = todayET()
 
   const metrics = useMemo(
@@ -42,6 +43,11 @@ export default function Leaderboard({ users, allGoals, allCompletions, allPosts,
 
   const metric = metrics[idx]
   const nameMap = Object.fromEntries(users.map(u => [u.uid, u.displayName || u.email || 'Unknown']))
+
+  const breakdown = useMemo(
+    () => breakdownUid ? computeBeastBreakdown(breakdownUid, allGoals, allCompletions, allPosts, today) : null,
+    [breakdownUid, allGoals, allCompletions, allPosts, today],
+  )
 
   function prev() {
     setIdx(i => (i - 1 + metrics.length) % metrics.length)
@@ -76,13 +82,17 @@ export default function Leaderboard({ users, allGoals, allCompletions, allPosts,
     const name = nameMap[entry.uid] ?? 'Unknown'
     const pct = metric.maxScore > 0 ? (entry.score / metric.maxScore) * 100 : 0
 
+    const isBeastTab = metric.id === 'beast'
     return (
       <button
         key={entry.uid}
-        onClick={() => !isYou ? onMemberClick(entry.uid) : undefined}
+        onClick={() => {
+          if (isBeastTab) setBreakdownUid(entry.uid)
+          else if (!isYou) onMemberClick(entry.uid)
+        }}
         className={`w-full flex items-center gap-3.5 px-5 py-3.5 text-left transition-colors ${
-          isYou ? 'bg-orange-50 dark:bg-orange-950/20' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
-        } ${!isLast ? 'border-b border-gray-100 dark:border-gray-800' : ''}`}
+          isYou && !isBeastTab ? 'bg-orange-50 dark:bg-orange-950/20 cursor-default' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
+        } ${isYou && isBeastTab ? 'bg-orange-50 dark:bg-orange-950/20' : ''} ${!isLast ? 'border-b border-gray-100 dark:border-gray-800' : ''}`}
       >
         {/* Rank badge, medal, or spacer */}
         {showRankBadge ? (
@@ -151,16 +161,19 @@ export default function Leaderboard({ users, allGoals, allCompletions, allPosts,
           <div className="flex-1 text-center min-w-0">
             <p className="font-bold text-white text-base leading-tight">{metric.name}</p>
             {metric.id === 'beast' ? (
-              <button
-                onClick={() => setShowInfo(true)}
-                className="inline-flex items-center gap-1 text-orange-100 text-xs mt-0.5 hover:text-white transition"
-              >
-                <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <circle cx="12" cy="12" r="10" />
-                  <path strokeLinecap="round" d="M12 16v-4M12 8h.01" />
-                </svg>
-                How points are calculated
-              </button>
+              <div className="flex flex-col items-center gap-0.5 mt-0.5">
+                <button
+                  onClick={() => setShowInfo(true)}
+                  className="inline-flex items-center gap-1 text-orange-100 text-xs hover:text-white transition"
+                >
+                  <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <circle cx="12" cy="12" r="10" />
+                    <path strokeLinecap="round" d="M12 16v-4M12 8h.01" />
+                  </svg>
+                  How points are calculated
+                </button>
+                <p className="text-orange-100/60 text-xs">Tap a row to see their score breakdown</p>
+              </div>
             ) : (
               <p className="text-orange-100 text-xs mt-0.5">{metric.description}</p>
             )}
@@ -244,6 +257,15 @@ export default function Leaderboard({ users, allGoals, allCompletions, allPosts,
             </div>
           </div>
         </div>
+      )}
+
+      {/* Beast Score breakdown modal */}
+      {breakdownUid && breakdown && (
+        <BeastBreakdownModal
+          name={nameMap[breakdownUid] ?? 'Unknown'}
+          breakdown={breakdown}
+          onClose={() => setBreakdownUid(null)}
+        />
       )}
 
       {/* Rank groups */}
@@ -331,6 +353,105 @@ export default function Leaderboard({ users, allGoals, allCompletions, allPosts,
             {renderPersonRow(metric.myEntry, true, true)}
           </>
         )}
+      </div>
+    </div>
+  )
+}
+
+function BeastBreakdownModal({ name, breakdown, onClose }: {
+  name: string
+  breakdown: BeastBreakdown
+  onClose: () => void
+}) {
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-end sm:items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm shadow-xl border border-gray-100 dark:border-gray-800 overflow-hidden max-h-[85vh] flex flex-col"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-orange-500 to-amber-400 dark:from-orange-900 dark:to-amber-800 px-5 py-4 flex items-center justify-between shrink-0">
+          <div>
+            <p className="font-bold text-white text-base">{name}'s Beast Score</p>
+            <p className="text-orange-100 text-sm font-semibold">{breakdown.totalScore} pts total</p>
+          </div>
+          <button onClick={onClose} className="text-white/70 hover:text-white transition">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="overflow-y-auto flex-1 p-4 space-y-3">
+          {breakdown.weeks.length === 0 && (
+            <p className="text-center text-gray-400 dark:text-gray-500 text-sm py-6">No goals set up yet.</p>
+          )}
+
+          {breakdown.weeks.map(week => (
+            <div key={week.label} className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4">
+              {/* Week header */}
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="font-semibold text-gray-800 dark:text-white text-sm">{week.label}</p>
+                  <span className={`text-xs font-medium ${week.weekDone ? 'text-green-500 dark:text-green-400' : 'text-orange-400'}`}>
+                    {week.weekDone ? 'Completed' : 'In Progress'}
+                  </span>
+                </div>
+                <span className={`text-sm font-bold tabular-nums ${week.total >= 0 ? 'text-gray-700 dark:text-gray-200' : 'text-red-400'}`}>
+                  {week.total >= 0 ? `+${week.total}` : week.total} pts
+                </span>
+              </div>
+
+              {week.lines.length === 0 ? (
+                <p className="text-xs text-gray-400 dark:text-gray-500">No goals this week</p>
+              ) : (
+                <div className="space-y-2">
+                  {week.lines.map((line, i) => (
+                    <div
+                      key={i}
+                      className={`flex items-start gap-2 ${line.isBonus ? 'pt-2 mt-1 border-t border-gray-200 dark:border-gray-700' : ''}`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium ${line.isBonus ? 'text-orange-500 dark:text-orange-400' : 'text-gray-800 dark:text-gray-100'}`}>
+                          {line.label}
+                        </p>
+                        {line.detail && (
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{line.detail}</p>
+                        )}
+                      </div>
+                      <span className={`text-sm font-bold shrink-0 tabular-nums ${
+                        line.pts > 0
+                          ? line.isBonus ? 'text-orange-500 dark:text-orange-400' : 'text-green-500 dark:text-green-400'
+                          : 'text-red-400'
+                      }`}>
+                        {line.pts > 0 ? `+${line.pts}` : line.pts}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* Feed posts */}
+          {breakdown.postDays > 0 && (
+            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-800 dark:text-gray-100">Feed posts</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500">
+                  {breakdown.postDays} day{breakdown.postDays !== 1 ? 's' : ''} × +2
+                </p>
+              </div>
+              <span className="text-sm font-bold text-green-500 dark:text-green-400 tabular-nums">
+                +{breakdown.postPts}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
