@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 // ── Primitive helpers ─────────────────────────────────────────────────────────
 
@@ -321,10 +322,20 @@ const QAS: QA[] = [
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function BeastScoreGuide() {
+  const navigate = useNavigate()
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       {/* Header */}
       <div className="bg-gradient-to-r from-orange-500 to-amber-400 dark:from-orange-900 dark:to-amber-800 px-5 pt-10 pb-8">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-1 text-orange-200/80 hover:text-white text-sm mb-4 transition"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+          Back
+        </button>
         <p className="text-orange-200/80 text-xs font-semibold uppercase tracking-widest mb-1">Beast Mode June</p>
         <h1 className="text-2xl font-black text-white mb-1">Beast Score Guide</h1>
         <p className="text-orange-100/80 text-sm">How points are earned, lost, and multiplied.</p>
