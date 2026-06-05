@@ -40,6 +40,8 @@ export default function DayLogModal({ date, userId, goals, completions, onClose,
       setLocal(prev => prev.filter(c => !(c.goalId === goalId && c.date === date)))
       await removeCompletion(userId, goalId, date)
     } else {
+      const goal = goals.find(g => g.id === goalId)
+      if (goal?.frequency.type === 'weekly' && weekCount(goalId) >= goal.frequency.daysPerWeek) return
       setLocal(prev => [
         ...prev,
         { id: '_local', goalId, userId, date, completedAt: null as any },
@@ -101,16 +103,22 @@ export default function DayLogModal({ date, userId, goals, completions, onClose,
                 Weekly
               </p>
               <div className="space-y-2">
-                {weeklyGoals.map(goal => (
-                  <TaskRow
-                    key={goal.id}
-                    title={goal.title}
-                    checked={isDone(goal.id)}
-                    sublabel={`${weekCount(goal.id)}/${goal.frequency.daysPerWeek} this week`}
-                    readOnly={readOnly}
-                    onToggle={() => handleToggle(goal.id)}
-                  />
-                ))}
+                {weeklyGoals.map(goal => {
+                  const done = isDone(goal.id)
+                  const count = weekCount(goal.id)
+                  const quotaMet = count >= goal.frequency.daysPerWeek
+                  return (
+                    <TaskRow
+                      key={goal.id}
+                      title={goal.title}
+                      checked={done}
+                      locked={!done && quotaMet}
+                      sublabel={`${count}/${goal.frequency.daysPerWeek} this week`}
+                      readOnly={readOnly}
+                      onToggle={() => handleToggle(goal.id)}
+                    />
+                  )
+                })}
               </div>
             </div>
           )}
@@ -136,15 +144,17 @@ interface TaskRowProps {
   sublabel: string
   onToggle: () => void
   readOnly?: boolean
+  locked?: boolean
 }
 
-function TaskRow({ title, checked, sublabel, onToggle, readOnly }: TaskRowProps) {
-  const Elem = readOnly ? 'div' : 'button'
+function TaskRow({ title, checked, sublabel, onToggle, readOnly, locked }: TaskRowProps) {
+  const disabled = readOnly || locked
+  const Elem = disabled ? 'div' : 'button'
   return (
     <Elem
-      {...(!readOnly && { onClick: onToggle })}
+      {...(!disabled && { onClick: onToggle })}
       className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left ${
-        readOnly ? '' : 'transition-colors'
+        disabled ? 'opacity-50' : 'transition-colors'
       } ${checked ? 'bg-gray-100/60 dark:bg-gray-800/60' : 'bg-gray-100 dark:bg-gray-800'}`}
     >
       <div className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
