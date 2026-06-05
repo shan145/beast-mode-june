@@ -20,14 +20,15 @@ import JuneCalendar from '@/components/calendar/JuneCalendar'
 import MemberCard from '@/components/community/MemberCard'
 import Leaderboard from '@/components/community/Leaderboard'
 import Feed from '@/components/feed/Feed'
+import ChatView from '@/components/chat/ChatView'
 import NavTabs, { type TabDef } from '@/components/ui/NavTabs'
 import CelebrationGift from '@/components/ui/CelebrationGift'
 import CelebrationFireworks from '@/components/ui/CelebrationFireworks'
 import type { Goal } from '@/types'
 
-type Tab = 'today' | 'calendar' | 'community' | 'feed' | 'goals'
+type Tab = 'today' | 'calendar' | 'community' | 'feed' | 'chat' | 'goals'
 
-const TABS: TabDef<Tab>[] = [
+const BASE_TABS: Omit<TabDef<Tab>, 'badge'>[] = [
   {
     id: 'today',
     label: 'Today',
@@ -81,10 +82,20 @@ const TABS: TabDef<Tab>[] = [
       </svg>
     ),
   },
+  {
+    id: 'chat',
+    label: 'Chat',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+      </svg>
+    ),
+  },
 ]
 
 export default function Dashboard() {
   const { firebaseUser } = useAuth()
+  const [chatUnread, setChatUnread] = useState(0)
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { theme, toggle: toggleTheme } = useTheme()
@@ -209,103 +220,120 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <NavTabs tabs={TABS} active={tab} onChange={t => { localStorage.setItem('beast_mode_tab', t); setSearchParams({ tab: t }) }} />
+      <NavTabs
+        tabs={BASE_TABS.map(t => ({ ...t, badge: t.id === 'chat' && tab !== 'chat' ? chatUnread : undefined }))}
+        active={tab}
+        onChange={t => { localStorage.setItem('beast_mode_tab', t); setSearchParams({ tab: t }) }}
+      />
 
-      <main className="max-w-2xl mx-auto px-6 pt-8 pb-28 md:pb-8">
-        {loading ? (
-          <div className="space-y-3 animate-pulse">
-            {[1, 2, 3].map(i => <div key={i} className="h-14 bg-gray-200 dark:bg-gray-800 rounded-xl" />)}
+      <main className={`max-w-2xl mx-auto px-6 pb-28 md:pb-8 ${tab === 'chat' ? 'pt-4' : 'pt-8'}`}>
+        {/* Always-mounted chat so WS + unread state stays alive on other tabs */}
+        {firebaseUser && (
+          <div className={tab === 'chat' ? '' : 'hidden'}>
+            <ChatView
+              currentUserId={firebaseUser.uid}
+              users={users}
+              onUnreadChange={setChatUnread}
+            />
           </div>
-        ) : (
-          <div key={tab} className="tab-fade-in">
-            {tab === 'today' && firebaseUser && (
-              <DailyChecklist
-                userId={firebaseUser.uid}
-                goals={goals}
-                completions={completions}
-              />
-            )}
+        )}
 
-            {tab === 'calendar' && (
-              <JuneCalendar goals={goals} completions={completions} userId={firebaseUser?.uid} />
-            )}
+        {tab !== 'chat' && (
+          loading ? (
+            <div className="space-y-3 animate-pulse">
+              {[1, 2, 3].map(i => <div key={i} className="h-14 bg-gray-200 dark:bg-gray-800 rounded-xl" />)}
+            </div>
+          ) : (
+            <div key={tab} className="tab-fade-in">
+              {tab === 'today' && firebaseUser && (
+                <DailyChecklist
+                  userId={firebaseUser.uid}
+                  goals={goals}
+                  completions={completions}
+                />
+              )}
 
-            {tab === 'community' && (
-              <>
-                <h2 className="text-xl font-semibold mb-4">The Group</h2>
+              {tab === 'calendar' && (
+                <JuneCalendar goals={goals} completions={completions} userId={firebaseUser?.uid} />
+              )}
 
-                {/* Leaderboard */}
-                {users.length > 1 && (
-                  <Leaderboard
-                    users={users}
-                    allGoals={allGoals}
-                    allCompletions={allCompletions}
-                    allPosts={allPosts}
-                    currentUserId={firebaseUser?.uid}
-                    onMemberClick={uid => navigate(`/member/${uid}`)}
-                  />
-                )}
+              {tab === 'community' && (
+                <>
+                  <h2 className="text-xl font-semibold mb-4">The Group</h2>
 
-                {/* Members list */}
-                {sortedMembers.length === 0 ? (
-                  <div className="text-center py-16 text-gray-400 dark:text-gray-500">
-                    <p className="text-sm">No members yet — share the group password to invite friends.</p>
+                  {/* Leaderboard */}
+                  {users.length > 1 && (
+                    <Leaderboard
+                      users={users}
+                      allGoals={allGoals}
+                      allCompletions={allCompletions}
+                      allPosts={allPosts}
+                      currentUserId={firebaseUser?.uid}
+                      onMemberClick={uid => navigate(`/member/${uid}`)}
+                    />
+                  )}
+
+                  {/* Members list */}
+                  {sortedMembers.length === 0 ? (
+                    <div className="text-center py-16 text-gray-400 dark:text-gray-500">
+                      <p className="text-sm">No members yet — share the group password to invite friends.</p>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">Members</p>
+                      <div className="space-y-2">
+                        {sortedMembers.map(member => (
+                          <MemberCard
+                            key={member.uid}
+                            member={member}
+                            isYou={member.uid === firebaseUser?.uid}
+                            allDailyDoneToday={allDailyDoneTodayByUser[member.uid]}
+                            anyCompletionToday={anyCompletionTodayByUser[member.uid]}
+                            currentUserName={ownProfile?.displayName}
+                            onClick={() => navigate(`/member/${member.uid}`)}
+                          />
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+
+              {tab === 'feed' && <Feed />}
+
+              {tab === 'goals' && (
+                <>
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-semibold">Your Goals</h2>
+                    <button
+                      onClick={() => setShowForm(true)}
+                      className="bg-orange-500 hover:bg-orange-400 text-white font-semibold rounded-lg px-4 py-2 text-sm transition"
+                    >
+                      + Add goal
+                    </button>
                   </div>
-                ) : (
-                  <>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">Members</p>
-                    <div className="space-y-2">
-                      {sortedMembers.map(member => (
-                        <MemberCard
-                          key={member.uid}
-                          member={member}
-                          isYou={member.uid === firebaseUser?.uid}
-                          allDailyDoneToday={allDailyDoneTodayByUser[member.uid]}
-                          anyCompletionToday={anyCompletionTodayByUser[member.uid]}
-                          currentUserName={ownProfile?.displayName}
-                          onClick={() => navigate(`/member/${member.uid}`)}
+
+                  {goals.length === 0 ? (
+                    <div className="text-center py-16 text-gray-400 dark:text-gray-500">
+                      <p className="text-lg mb-1 text-gray-500 dark:text-gray-400">No goals yet</p>
+                      <p className="text-sm">Add your first goal to get started.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {goals.map(goal => (
+                        <GoalCard
+                          key={goal.id}
+                          goal={goal}
+                          onEdit={() => setEditingGoal(goal)}
+                          onDelete={() => setDeletingGoal(goal)}
                         />
                       ))}
                     </div>
-                  </>
-                )}
-              </>
-            )}
-
-            {tab === 'feed' && <Feed />}
-
-            {tab === 'goals' && (
-              <>
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-semibold">Your Goals</h2>
-                  <button
-                    onClick={() => setShowForm(true)}
-                    className="bg-orange-500 hover:bg-orange-400 text-white font-semibold rounded-lg px-4 py-2 text-sm transition"
-                  >
-                    + Add goal
-                  </button>
-                </div>
-
-                {goals.length === 0 ? (
-                  <div className="text-center py-16 text-gray-400 dark:text-gray-500">
-                    <p className="text-lg mb-1 text-gray-500 dark:text-gray-400">No goals yet</p>
-                    <p className="text-sm">Add your first goal to get started.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {goals.map(goal => (
-                      <GoalCard
-                        key={goal.id}
-                        goal={goal}
-                        onEdit={() => setEditingGoal(goal)}
-                        onDelete={() => setDeletingGoal(goal)}
-                      />
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+                  )}
+                </>
+              )}
+            </div>
+          )
         )}
       </main>
 

@@ -2,6 +2,7 @@ export interface TabDef<T extends string = string> {
   id: T
   label: string
   icon: React.ReactNode
+  badge?: number
 }
 
 interface Props<T extends string> {
@@ -20,13 +21,18 @@ export default function NavTabs<T extends string>({ tabs, active, onChange }: Pr
             <button
               key={tab.id}
               onClick={() => onChange(tab.id)}
-              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              className={`relative px-4 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
                 active === tab.id
                   ? 'border-orange-500 text-orange-500'
                   : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
               }`}
             >
               {tab.label}
+              {!!tab.badge && tab.badge > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-orange-500 text-white text-[9px] font-bold flex items-center justify-center leading-none">
+                  {tab.badge > 99 ? '99+' : tab.badge}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -46,7 +52,14 @@ export default function NavTabs<T extends string>({ tabs, active, onChange }: Pr
                 active === tab.id ? 'text-orange-500' : 'text-gray-400 dark:text-gray-500'
               }`}
             >
-              <div className="w-5 h-5">{tab.icon}</div>
+              <div className="relative w-5 h-5">
+                {tab.icon}
+                {!!tab.badge && tab.badge > 0 && (
+                  <span className="absolute -top-1 -right-1.5 min-w-[14px] h-3.5 px-0.5 rounded-full bg-orange-500 text-white text-[8px] font-bold flex items-center justify-center leading-none">
+                    {tab.badge > 99 ? '99+' : tab.badge}
+                  </span>
+                )}
+              </div>
               <span className="text-[10px] font-medium leading-none">{tab.label}</span>
             </button>
           ))}

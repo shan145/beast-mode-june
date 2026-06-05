@@ -1,0 +1,38 @@
+name = "beast-mode-api"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+[vars]
+FIREBASE_PROJECT_ID = "beast-mode-c4809"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "beast-mode-db"
+database_id = "51a52832-f023-4740-902a-85456d902d5a"
+
+[[durable_objects.bindings]]
+name = "CHAT_ROOM"
+class_name = "ChatRoom"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ChatRoom"]
+
+[env.production]
+workers_dev = false
+
+[[env.production.routes]]
+pattern = "api.beast-mode-cct.com"
+custom_domain = true
+
+[env.production.vars]
+FIREBASE_PROJECT_ID = "beast-mode-c4809"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "beast-mode-db"
+database_id = "51a52832-f023-4740-902a-85456d902d5a"
+
+[[env.production.durable_objects.bindings]]
+name = "CHAT_ROOM"
+class_name = "ChatRoom"
