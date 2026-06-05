@@ -203,18 +203,36 @@ export default function Leaderboard({ users, allGoals, allCompletions, allPosts,
                 </svg>
               </button>
             </div>
-            <div className="px-5 py-4 space-y-3">
-              {[
-                { pts: '+1 pt',   label: 'per completion logged' },
-                { pts: '+3 pts',  label: 'per perfect day — all daily goals done' },
-                { pts: '+10 pts', label: 'per perfect week — all weekly quotas met' },
-                { pts: '+2 pts',  label: 'per day you post to the feed (max 1/day)' },
-              ].map(({ pts, label }) => (
-                <div key={pts} className="flex items-start gap-3">
-                  <span className="text-sm font-bold text-orange-500 w-16 shrink-0">{pts}</span>
-                  <span className="text-sm text-gray-600 dark:text-gray-300">{label}</span>
-                </div>
-              ))}
+            <div className="px-5 py-4 space-y-4">
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Base</p>
+                {[
+                  { pts: '+2 pts', label: 'per daily goal completed' },
+                  { pts: '−1 pt',  label: 'per daily goal missed', neg: true },
+                  { pts: '+3 pts', label: 'per "some days" completion (up to quota)' },
+                  { pts: '−2 pts', label: 'per missed required session after week ends', neg: true },
+                  { pts: '+2 pts', label: 'per day you post to the feed (max 1/day)' },
+                ].map(({ pts, label, neg }) => (
+                  <div key={label} className="flex items-start gap-3">
+                    <span className={`text-sm font-bold w-16 shrink-0 ${neg ? 'text-red-400' : 'text-orange-500'}`}>{pts}</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-300">{label}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Bonuses</p>
+                {[
+                  { pts: '+5 pts',  label: 'each weekly goal quota met' },
+                  { pts: '+10 pts', label: 'all daily goals done every day of the week' },
+                  { pts: '+10 pts', label: 'all weekly goal quotas met' },
+                  { pts: '+25 pts', label: 'BEAST WEEK — all dailies + all weeklies (awarded at week end)' },
+                ].map(({ pts, label }) => (
+                  <div key={label} className="flex items-start gap-3">
+                    <span className="text-sm font-bold text-orange-500 w-16 shrink-0">{pts}</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-300">{label}</span>
+                  </div>
+                ))}
+              </div>
             </div>
             <div className="px-5 pb-5">
               <button

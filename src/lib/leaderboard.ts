@@ -8,6 +8,23 @@ const JUNE_WEEKS = [1, 7, 14, 21, 28].map(d => {
   return { start: weekStart(date), end: weekEnd(date) }
 })
 
+// June days in `week` that have elapsed as of `today`, clipped to June 1–30
+function daysInWeek(week: { start: string; end: string }, today: string): string[] {
+  const days: string[] = []
+  const start = week.start < '2026-06-01' ? '2026-06-01' : week.start
+  const end = week.end < today ? week.end : today
+  if (start > end) return days
+  const [sy, sm, sd] = start.split('-').map(Number)
+  const d = new Date(sy, sm - 1, sd)
+  while (true) {
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    if (dateStr > end) break
+    days.push(dateStr)
+    d.setDate(d.getDate() + 1)
+  }
+  return days
+}
+
 function juneDaysUpTo(today: string): string[] {
   const days: string[] = []
   for (let d = 1; d <= 30; d++) {
@@ -91,8 +108,54 @@ function computeStats(
   }
   const postDays = postDaySet.size
 
-  // Beast score: 1pt/completion + 3pts/perfect day + 10pts/perfect week + 2pts/post day
-  const beastScore = totalSessions + perfectDays * 3 + perfectWeeks * 10 + postDays * 2
+  // Beast score: per-week accounting with bonuses and penalties
+  let beastScore = 0
+  for (const week of JUNE_WEEKS) {
+    if (week.start > today) break
+    const weekDone = week.end <= today
+    const elapsed = daysInWeek(week, today)
+
+    let weekPts = 0
+
+    // Daily goals: +2 per completion, -1 per miss; +10 if perfect all week (on week end)
+    let perfectDailyWeek = dailyGoals.length > 0
+    for (const goal of dailyGoals) {
+      for (const date of elapsed) {
+        if (comps.some(c => c.goalId === goal.id && c.date === date)) {
+          weekPts += 2
+        } else {
+          weekPts -= 1
+          perfectDailyWeek = false
+        }
+      }
+    }
+    if (perfectDailyWeek && weekDone) weekPts += 10
+
+    // Weekly goals: +3 per completion (up to quota), +5 per goal when quota met,
+    // -2 per missed session (only after week ends), +10 when all quotas met
+    let allWeeklyMet = weeklyGoals.length > 0
+    for (const goal of weeklyGoals) {
+      const count = comps.filter(
+        c => c.goalId === goal.id && c.date >= week.start && c.date <= week.end
+      ).length
+      weekPts += Math.min(count, goal.frequency.daysPerWeek) * 3
+      if (count >= goal.frequency.daysPerWeek) {
+        weekPts += 5
+      } else {
+        allWeeklyMet = false
+        if (weekDone) weekPts -= (goal.frequency.daysPerWeek - count) * 2
+      }
+    }
+    if (allWeeklyMet) weekPts += 10
+
+    // Beast week combo: all dailies perfect + all weekly quotas met (only confirmed at week end)
+    if (weekDone && dailyGoals.length > 0 && weeklyGoals.length > 0 && perfectDailyWeek && allWeeklyMet) {
+      weekPts += 25
+    }
+
+    beastScore += weekPts
+  }
+  beastScore += postDays * 2
 
   // Longest streak: consecutive days with at least one completion
   let longestStreak = 0
