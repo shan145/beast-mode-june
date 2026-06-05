@@ -156,6 +156,7 @@ function computeStats(
     beastScore += weekPts
   }
   beastScore += postDays * 2
+  beastScore = Math.max(0, beastScore)
 
   // Longest streak: consecutive days with at least one completion
   let longestStreak = 0
