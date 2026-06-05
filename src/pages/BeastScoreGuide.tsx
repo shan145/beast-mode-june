@@ -326,7 +326,7 @@ export default function BeastScoreGuide() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       {/* Header */}
-      <div className="bg-gradient-to-r from-orange-500 to-amber-400 dark:from-orange-900 dark:to-amber-800 px-5 pt-10 pb-8">
+      <div className="bg-gradient-to-r from-orange-500 to-amber-400 dark:from-orange-900 dark:to-amber-800 px-5 pt-14 pb-8">
         <button
           onClick={() => navigate(-1)}
           className="flex items-center gap-1 text-orange-200/80 hover:text-white text-sm mb-4 transition"
