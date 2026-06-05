@@ -5,3 +5,4 @@ dist/
 .env.production
 .firebase/
 firebase-debug.log
+COMPONENTS.md
