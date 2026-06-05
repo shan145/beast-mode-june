@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { computeLeaderboard, computeBeastBreakdown, type RankEntry, type BeastBreakdown, type BreakdownChip } from '@/lib/leaderboard'
 import { todayET } from '@/lib/time'
 import type { UserProfile, Goal, Completion, Post } from '@/types'
@@ -247,7 +248,17 @@ export default function Leaderboard({ users, allGoals, allCompletions, allPosts,
                 ))}
               </div>
             </div>
-            <div className="px-5 pb-5">
+            <div className="px-5 pb-5 space-y-2">
+              <Link
+                to="/scoring"
+                onClick={() => setShowInfo(false)}
+                className="w-full flex items-center justify-center gap-1.5 text-orange-500 hover:text-orange-400 text-sm font-medium py-1 transition"
+              >
+                Full scoring guide with examples
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
               <button
                 onClick={() => setShowInfo(false)}
                 className="w-full bg-orange-500 hover:bg-orange-400 text-white font-semibold rounded-xl py-2.5 text-sm transition"
