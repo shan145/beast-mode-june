@@ -10,11 +10,6 @@ if ('serviceWorker' in navigator) {
     }
   })
 
-  // When a new service worker takes over, reload to get the latest assets.
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    window.location.reload()
-  })
-
   // Always register so update detection works regardless of push permission.
   // updateViaCache: 'none' bypasses HTTP cache when checking for a new SW version.
   navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
