@@ -1230,7 +1230,7 @@ function MessageAreaWithSync({
             disabled={!connected}
             rows={1}
             className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 rounded-2xl px-4 py-2.5 text-sm resize-none outline-none focus:ring-2 focus:ring-orange-500/30 disabled:opacity-50 leading-relaxed"
-            style={{ maxHeight: '120px', overflowY: 'auto' }}
+            style={{ maxHeight: '120px', overflowY: 'auto', fontSize: '16px' }}
           />
           <button
             onClick={submit}
