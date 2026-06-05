@@ -6,7 +6,7 @@ This file helps Claude understand the project so it can give you accurate, conte
 
 ## Project Overview
 
-Beast Mode June is a small-group accountability web app for tracking quantifiable June goals. ~10–15 users, all known, no public access. Firebase is the only backend — no server, no API routes.
+Beast Mode June is a small-group accountability web app for tracking quantifiable June goals. ~10–15 users, all known, no public access. Core data (goals, completions, feed) lives in Firestore. Images go through Cloudinary; push notifications and image CDN caching run through lightweight Cloudflare Workers.
 
 ---
 
@@ -15,9 +15,14 @@ Beast Mode June is a small-group accountability web app for tracking quantifiabl
 - **React 18 + TypeScript** via Vite
 - **Tailwind CSS** for all styling
 - **Firebase Auth** — Google sign-in only, plus a client-side group password gate (set via `VITE_GROUP_PASSWORD` env var)
-- **Firestore** — real-time database, no dedicated backend
+- **Firestore** — real-time database for goals, completions, feed posts, comments, reactions, kudos
+- **Cloudinary** — image hosting and transformation for feed posts (`VITE_CLOUDINARY_CLOUD_NAME`, `VITE_CLOUDINARY_UPLOAD_PRESET`)
+- **Cloudflare Workers** — three workers in `workers/`:
+  - `workers/images/` — proxies Cloudinary URLs for CDN caching (`VITE_IMAGE_CDN_URL`)
+  - `workers/notifications/` — handles Web Push subscriptions and delivery (`VITE_NOTIFICATIONS_WORKER_URL`, `VITE_VAPID_PUBLIC_KEY`)
+  - `workers/api/` — Hono API for new features (in progress — see `docs/migration/`)
 - **canvas-confetti** — celebration animations on task completion
-- **React Context** for auth state; component-local state for everything else
+- **React Context** — `useAuth` for auth state, `ThemeContext` for dark/light mode; component-local state for everything else
 
 ---
 
@@ -25,27 +30,19 @@ Beast Mode June is a small-group accountability web app for tracking quantifiabl
 
 ```
 src/
-  components/        # Reusable UI components
-    ui/              # Generic (Button, Modal, Badge, etc.)
-    goals/           # GoalCard, GoalForm, GoalList
-    calendar/        # JuneCalendar, DayCell, WeekRow
-    checklist/       # DailyChecklist, TaskItem
-    community/       # MemberList, MemberView
-  pages/             # Route-level components
-    Login.tsx
-    Dashboard.tsx    # Personal view
-    MemberDashboard.tsx  # Read-only view of another user
-  hooks/
-    useAuth.ts       # Current user + group auth state
-    useGoals.ts      # Goals CRUD
-    useCompletions.ts# Read/write completions
-    useCalendar.ts   # Derive calendar state from goals + completions
-  lib/
-    firebase.ts      # Firebase app + exports (auth, db)
-    firestore.ts     # Typed read/write helpers
-    time.ts          # Eastern Time helpers (date strings, resets)
-  types/
-    index.ts         # Goal, Completion, User types
+  components/
+    ui/           # CelebrationFireworks, CelebrationGift, NavTabs, ProgressRing
+    goals/        # GoalCard, GoalForm
+    calendar/     # JuneCalendar, DayCell, WeekRow, DayLogModal
+    checklist/    # DailyChecklist, TaskItem, CelebrationToast
+    community/    # Leaderboard, MemberCard
+    feed/         # Feed, PostCard, PostForm, ReactionBar, CommentSection
+  pages/          # Login, Dashboard, MemberDashboard, BeastScoreGuide, Settings
+  hooks/          # useAuth, useGoals, useAllGoals, useCompletions, useAllCompletions,
+                  # useCalendar, usePosts, usePagedPosts, useUser, useUsers, useVersionPolling
+  lib/            # firebase, firestore, time, leaderboard, images, storage, pushNotifications
+  contexts/       # ThemeContext (dark/light)
+  types/          # index.ts — UserProfile, Goal, Completion, Post, Comment, Reaction, Kudos, DayState
 ```
 
 ---
@@ -85,6 +82,46 @@ src/
   userId: string
   date: string        // "2026-06-15" — always Eastern Time
   completedAt: Timestamp
+}
+```
+
+### `posts/{postId}`
+```ts
+{
+  userId: string
+  imageURLs: string[]   // Cloudinary URLs (rewritten to CDN worker at read time)
+  caption: string
+  createdAt: Timestamp | null
+}
+```
+
+### `comments/{commentId}`
+```ts
+{
+  postId: string
+  userId: string
+  text: string
+  createdAt: Timestamp | null
+}
+```
+
+### `reactions/{reactionId}`
+```ts
+{
+  postId: string
+  userId: string
+  emoji: string
+  createdAt: Timestamp | null
+}
+```
+
+### `kudos/{kudosId}`
+```ts
+{
+  fromUserId: string
+  toUserId: string
+  date: string        // "YYYY-MM-DD" ET — the day the recipient completed all tasks
+  createdAt: Timestamp | null
 }
 ```
 
@@ -187,6 +224,18 @@ The calendar state is derived in `src/hooks/useCalendar.ts`. It takes goals + co
 2. Add the route in `src/App.tsx`
 3. Wrap in `<ProtectedRoute>` if it requires auth
 
+### "Change Beast Score logic"
+All scoring math lives in `src/lib/leaderboard.ts`. The `Leaderboard` component in `src/components/community/Leaderboard.tsx` consumes it. The `BeastScoreGuide` page explains the algorithm to users — keep it in sync with any logic changes.
+
+### "Add a new feed feature (reactions, comments, etc.)"
+1. Add the type to `src/types/index.ts`
+2. Add read/write helpers to `src/lib/firestore.ts`
+3. Add a hook in `src/hooks/` if real-time subscription is needed
+4. Wire up the component — feed components live in `src/components/feed/`
+
+### "Change image upload behavior"
+Image uploads use Cloudinary via `src/lib/storage.ts`. URLs are rewritten at read time in `src/lib/images.ts` to route through the CDN Worker (`VITE_IMAGE_CDN_URL`). Change upload logic in `storage.ts`; change CDN routing in `images.ts`.
+
 ### "Seed test data"
 Use the Firebase Console → Firestore → "Start collection" to manually add documents, or run `npm run seed` (script in `scripts/seed.ts`) once it exists.
 
@@ -194,7 +243,7 @@ Use the Firebase Console → Firestore → "Start collection" to manually add do
 
 ## What NOT to Do
 
-- Don't add a Node.js backend or API routes — everything goes through the Firebase SDK directly
+- Don't add new features that directly write to Firestore from the client — new features go through the Hono Worker (see migration path below)
 - Don't use `moment.js` — use the helpers in `src/lib/time.ts` or native `Intl`
 - Don't allow writes to other users' data — always scope writes to `auth.currentUser.uid`
 - Don't render calendar days in the future — only render up to today
@@ -215,13 +264,17 @@ Firebase project setup:
 
 ---
 
-## Iteration Plan Summary
+## Backend Migration Path (Firebase → Hono + Cloudflare)
 
-| Phase | Focus |
-|---|---|
-| 1 | Project scaffold, Firebase wiring, auth flow |
-| 2 | Goals CRUD (create, edit, delete with warning) |
-| 3 | Daily/weekly checklist + completions + confetti |
-| 4 | June calendar UI (grid, day cells, weekly bars) |
-| 5 | Community view (read-only member dashboards) |
-| 6 | Polish, responsive design, production deploy |
+New features (chat, challenges, difficulty ratings) are being built on a Hono Worker rather than directly in Firestore. Firebase Auth stays permanently; the Worker verifies its ID tokens.
+
+Full step-by-step plans are in `docs/migration/`:
+- [`00-overview.md`](docs/migration/00-overview.md) — architecture diagram + feature routing table
+- [`01-scaffold-worker.md`](docs/migration/01-scaffold-worker.md) — Hono + wrangler setup
+- [`02-auth-middleware.md`](docs/migration/02-auth-middleware.md) — Firebase JWT verification
+- [`03-challenges.md`](docs/migration/03-challenges.md) — D1 schema, friend requests, challenges
+- [`04-chat.md`](docs/migration/04-chat.md) — Durable Objects, WebSocket rooms
+- [`05-difficulty-rating.md`](docs/migration/05-difficulty-rating.md) — Cron Trigger, weekly analysis
+- [`06-migrate-data.md`](docs/migration/06-migrate-data.md) — optional Firestore → D1 data migration
+
+When working on any migration step, read the relevant file for full context.

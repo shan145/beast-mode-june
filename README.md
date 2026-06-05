@@ -1,142 +1,130 @@
-# Beast Mode June 🏆
+# Beast Mode June
 
-A shared accountability app for tracking quantifiable goals throughout June. Built for a small group (~10–15 people) to stay motivated, check in on each other's progress, and celebrate wins together.
+A shared accountability app for tracking quantifiable goals. Built for a small group to stay motivated, check in on each other's progress, and celebrate wins together.
 
 ---
 
 ## What It Does
 
-**Beast Mode June** is a Firebase-backed web app where each member of our group can:
+Each member of the group can:
 
-- Log in with their Gmail account (+ group password gate)
-- Create quantifiable goals (e.g. "Run 5 days/week", "Gym 3x/week max 5x")
-- See a daily/weekly checklist of what needs to get done
+- Sign in with their Gmail account (+ group password gate)
+- Create quantifiable goals (e.g. "Run 5 days/week", "Gym 3x/week")
+- See a daily/weekly checklist of what needs to get done today
 - View a June calendar showing completed vs. missed tasks per day
 - Browse other members' dashboards in read-only mode for accountability
-- Get a celebration when they complete a task
+- Get a celebration animation when they complete a task
 
 ---
 
 ## Tech Stack
 
-| Layer | Choice | Why |
-|---|---|---|
-| Framework | React 18 + TypeScript | Strong typing, fast iteration |
-| Build Tool | Vite | Fast dev server, simple config |
-| Styling | Tailwind CSS | Utility-first, clean UI fast |
-| Auth | Firebase Auth (Google) | Free, easy Gmail sign-in |
-| Database | Firebase Firestore | Real-time, no backend needed |
-| Hosting | Firebase Hosting | Free tier, trivial deploy |
-| Celebrations | `canvas-confetti` | Lightweight, fun |
-| State | React Context + hooks | No extra deps for this scale |
+### Current (client → Firebase)
 
-No dedicated backend. All reads/writes go directly from the client to Firestore using security rules for access control.
+| Layer | Choice |
+|---|---|
+| Framework | React 18 + TypeScript (via Vite) |
+| Styling | Tailwind CSS |
+| Auth | Firebase Auth — Google sign-in + client-side group password gate |
+| Database | Firestore — real-time, no backend |
+| Hosting | Firebase Hosting |
+| Animations | `canvas-confetti` |
+| State | React Context + component-local hooks |
+
+All reads and writes go directly from the React client to Firestore. Security rules enforce that users can only write their own data.
+
+### Planned backend (Cloudflare Workers)
+
+New features — real-time chat, user challenges, and smart difficulty ratings — will be built on a Hono API backed by Cloudflare infrastructure. Firebase Auth stays as the identity layer; the Worker verifies Firebase ID tokens on every request.
+
+| Layer | Choice |
+|---|---|
+| API framework | Hono on Cloudflare Workers (`workers/api/`) |
+| Persistent data | Cloudflare D1 (SQLite) |
+| Real-time / WebSockets | Cloudflare Durable Objects |
+| Scheduled jobs | Cloudflare Cron Triggers |
+
+See `docs/migration/` for the step-by-step plan.
+
+---
+
+## Project Structure
+
+```
+src/
+  components/
+    ui/              # Generic components (Button, Modal, Badge, etc.)
+    goals/           # GoalCard, GoalForm, GoalList
+    calendar/        # JuneCalendar, DayCell, WeekRow
+    checklist/       # DailyChecklist, TaskItem
+    community/       # MemberList, MemberView
+  pages/
+    Login.tsx
+    Dashboard.tsx         # Personal view
+    MemberDashboard.tsx   # Read-only view of another user
+  hooks/
+    useAuth.ts            # Current user + group auth state
+    useGoals.ts           # Goals CRUD
+    useCompletions.ts     # Read/write completions
+    useCalendar.ts        # Derives calendar state from goals + completions
+  lib/
+    firebase.ts           # Firebase app init + exports
+    firestore.ts          # Typed Firestore read/write helpers
+    time.ts               # Eastern Time helpers
+  types/
+    index.ts              # Goal, Completion, User types
+```
 
 ---
 
 ## Firebase Data Model
 
 ```
-users/
-  {userId}/
-    email: string
-    displayName: string
-    photoURL: string
-    joinedAt: timestamp
+users/{userId}
+  email: string
+  displayName: string
+  photoURL: string
+  joinedAt: Timestamp
 
-goals/
-  {goalId}/
-    userId: string
-    title: string
-    description: string
-    frequency:
-      type: "daily" | "weekly"
-      daysPerWeek: number        // how many days per week this must happen
-      totalDays: number          // target total days for June
-    createdAt: timestamp
-    active: boolean
+goals/{goalId}
+  userId: string
+  title: string
+  description: string
+  frequency:
+    type: "daily" | "weekly"
+    daysPerWeek: number     // required completions per week
+    totalDays: number       // June target
+  createdAt: Timestamp
+  active: boolean
 
-completions/
-  {completionId}/
-    goalId: string
-    userId: string
-    date: string                 // "YYYY-MM-DD" in Eastern Time
-    completedAt: timestamp
+completions/{completionId}
+  goalId: string
+  userId: string
+  date: string              // "YYYY-MM-DD" in Eastern Time
+  completedAt: Timestamp
 ```
-
-Firestore security rules:
-- Users can only write their own `goals` and `completions`
-- All authenticated group members can **read** any user's data
 
 ---
 
 ## Authentication Flow
 
 1. User clicks "Sign in with Google"
-2. After OAuth success, app prompts for the **group password** (set via `VITE_GROUP_PASSWORD` in your `.env.local`)
-3. Password is checked client-side; if wrong, user is signed out
-4. On subsequent visits, password is stored in `localStorage` so you only enter it once per device
+2. After OAuth, app prompts for the group password (`VITE_GROUP_PASSWORD` in `.env.local`)
+3. Password checked client-side; stored in `localStorage` on success so you only enter it once per device
 
-> Note: This is a soft gate — it keeps randos out, not determined adversaries. Fine for a small friend group.
-
----
-
-## Feature Breakdown & Iteration Plan
-
-### Phase 1 — Auth & Shell
-- [ ] Vite + React + Tailwind project setup
-- [ ] Firebase project + config (Auth, Firestore, Hosting)
-- [ ] Google sign-in flow with group password gate
-- [ ] Protected route wrapper
-
-### Phase 2 — Goals CRUD
-- [ ] Goal creation form (title, freq type, days/week, max/week, total days)
-- [ ] Goal list on dashboard
-- [ ] Edit goal (in-place or modal)
-- [ ] Delete goal with confirmation warning ("All saved progress on this goal will be lost")
-
-### Phase 3 — Daily Checklist
-- [ ] Derive "today's tasks" from goals + completions
-- [ ] Daily tasks reset at midnight Eastern Time
-- [ ] Weekly tasks span Sun–Sat, available all week
-- [ ] Check off a task → write completion to Firestore
-- [ ] Celebration animation on check-off (confetti)
-
-### Phase 4 — June Calendar
-- [ ] Monthly grid for June (Sun–Sat layout)
-- [ ] Only render days up to today
-- [ ] Past days: show completed ✓ or missed ✗ per goal
-- [ ] Today: show pending tasks
-- [ ] Weekly goals stretch across the full week row
-- [ ] Visual key (color-coded per goal or status)
-
-### Phase 5 — Community View
-- [ ] Member list sidebar/nav (read from `users` collection)
-- [ ] Clicking a member shows their read-only dashboard + calendar
-- [ ] Your own profile is highlighted
-
-### Phase 6 — Polish & Deploy
-- [ ] Responsive mobile layout
-- [ ] Loading states + empty states
-- [ ] Firebase Hosting deploy
-- [ ] `firestore.rules` + `firestore.indexes.json` committed
+> This is a soft gate — it keeps randos out, not determined adversaries.
 
 ---
 
 ## Local Development
 
 ```bash
-# 1. Install dependencies
 npm install
-
-# 2. Copy env template and fill in your Firebase config
-cp .env.example .env.local
-
-# 3. Start dev server
+cp .env.example .env.local   # fill in Firebase config + group password
 npm run dev
 ```
 
-### Environment Variables (`.env.local`)
+### Environment Variables
 
 ```
 VITE_FIREBASE_API_KEY=
@@ -148,8 +136,6 @@ VITE_FIREBASE_APP_ID=
 VITE_GROUP_PASSWORD=
 ```
 
-Get these from [Firebase Console](https://console.firebase.google.com) → Project Settings → Your Apps.
-
 ---
 
 ## Deploying
@@ -159,28 +145,4 @@ npm run build
 firebase deploy
 ```
 
-Make sure `firebase.json` targets the `dist/` folder (Vite's output).
-
----
-
-## Seeding Data
-
-For initial testing, you can inject data directly into Firestore from the Firebase Console or using the seed script:
-
-```bash
-# Coming in Phase 2
-npm run seed
-```
-
----
-
-## Contributing
-
-This is a small group project. If you're adding a feature:
-
-1. Pull latest from `main`
-2. Create a branch: `feature/your-feature`
-3. Use Claude (`CLAUDE.md` has context) to help implement
-4. Test locally, then open a PR
-
-See `CLAUDE.md` for Claude-specific guidance on working in this codebase.
+Ensure `firebase.json` targets the `dist/` folder (Vite's output).

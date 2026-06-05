@@ -6,3 +6,4 @@ dist/
 .firebase/
 firebase-debug.log
 COMPONENTS.md
+workers/.wrangler/
