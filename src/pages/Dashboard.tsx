@@ -177,10 +177,10 @@ export default function Dashboard() {
   const loading = goalsLoading || completionsLoading
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white">
+    <div className={`bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white ${tab === 'chat' ? 'h-dvh overflow-hidden flex flex-col' : 'min-h-screen'}`}>
       {celebrationName && <CelebrationGift fromName={celebrationName} onDismiss={dismissCelebration} />}
       {fireworksName && <CelebrationFireworks fromName={fireworksName} onDismiss={dismissFireworks} />}
-      <header className="border-b border-gray-200 dark:border-gray-800 px-6 pb-4 flex items-center justify-between" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1rem)' }}>
+      <header className={`border-b border-gray-200 dark:border-gray-800 px-6 pb-4 flex items-center justify-between${tab === 'chat' ? ' flex-shrink-0' : ''}`} style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1rem)' }}>
         <h1 className="text-lg font-bold text-orange-500">Beast Mode June</h1>
         <div className="flex items-center gap-3">
           <span className="text-gray-500 dark:text-gray-400 text-sm hidden sm:block truncate max-w-[140px]">
@@ -220,16 +220,21 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <NavTabs
-        tabs={BASE_TABS.map(t => ({ ...t, badge: t.id === 'chat' && tab !== 'chat' ? chatUnread : undefined }))}
-        active={tab}
-        onChange={t => { localStorage.setItem('beast_mode_tab', t); setSearchParams({ tab: t }) }}
-      />
+      <div className={tab === 'chat' ? 'flex-shrink-0' : ''}>
+        <NavTabs
+          tabs={BASE_TABS.map(t => ({ ...t, badge: t.id === 'chat' && tab !== 'chat' ? chatUnread : undefined }))}
+          active={tab}
+          onChange={t => { localStorage.setItem('beast_mode_tab', t); setSearchParams({ tab: t }) }}
+        />
+      </div>
 
-      <main className={`max-w-2xl mx-auto px-6 pb-28 md:pb-8 ${tab === 'chat' ? 'pt-4' : 'pt-8'}`}>
+      <main className={tab === 'chat'
+        ? 'flex-1 min-h-0 max-w-2xl w-full mx-auto px-4 pt-2 pb-28 md:pb-0 overflow-hidden'
+        : 'max-w-2xl mx-auto px-6 pb-28 md:pb-8 pt-8'
+      }>
         {/* Always-mounted chat so WS + unread state stays alive on other tabs */}
         {firebaseUser && (
-          <div className={tab === 'chat' ? '' : 'hidden'}>
+          <div className={tab === 'chat' ? 'h-full' : 'hidden'}>
             <ChatView
               currentUserId={firebaseUser.uid}
               users={users}

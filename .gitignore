@@ -7,3 +7,5 @@ dist/
 firebase-debug.log
 COMPONENTS.md
 workers/.wrangler/
+workers/api/.wrangler/
+workers/notifications/.wrangler/
