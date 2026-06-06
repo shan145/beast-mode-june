@@ -76,7 +76,7 @@ export default function ReactionBar({ postId, postAuthorId, currentUserId, userM
     // Only notify on add, not on remove; don't notify if reacting to own post
     if (!wasReacted && postAuthorId !== currentUserId) {
       const name = auth.currentUser?.displayName ?? 'Someone'
-      sendNotification('feed-reaction', { userName: name, postId, emoji }, { recipientIds: [postAuthorId] })
+      sendNotification('feed-reaction', { userName: name, postId, emoji, reactorId: currentUserId }, { recipientIds: [postAuthorId] })
     }
   }
 
@@ -110,9 +110,14 @@ export default function ReactionBar({ postId, postAuthorId, currentUserId, userM
       {Object.entries(groups).map(([emoji, { count, isMine }]) => (
         <button
           key={emoji}
-          onClick={() => {
+          onClick={async () => {
             if (didLongPress.current) { didLongPress.current = false; return }
-            toggleReaction(currentUserId, postId, emoji)
+            const wasReacted = groups[emoji]?.isMine ?? false
+            await toggleReaction(currentUserId, postId, emoji)
+            if (!wasReacted && postAuthorId !== currentUserId) {
+              const name = auth.currentUser?.displayName ?? 'Someone'
+              sendNotification('feed-reaction', { userName: name, postId, emoji, reactorId: currentUserId }, { recipientIds: [postAuthorId] })
+            }
           }}
           onPointerEnter={e => {
             if (e.pointerType !== 'mouse') return

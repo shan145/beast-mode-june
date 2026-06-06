@@ -20,6 +20,8 @@ self.addEventListener('push', event => {
     body: data.body ?? '',
     tag: data.tag ?? 'beast-mode',
     data: data.data ?? {},
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
     requireInteraction: false,
   }
   event.waitUntil(self.registration.showNotification(title, options))

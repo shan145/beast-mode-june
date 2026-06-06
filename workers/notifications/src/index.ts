@@ -89,13 +89,16 @@ async function fanOut(
       .filter(k => !opts.excludeUserId || k !== `sub_${opts.excludeUserId}`)
   }
 
+  console.log('[fanOut] keys to notify:', kvKeys)
   await Promise.all(
     kvKeys.map(async key => {
       const raw = await env.PUSH_KV.get(key)
-      if (!raw) return
+      if (!raw) { console.log('[fanOut] no subscription found for key:', key); return }
       let sub: PushSubscription
-      try { sub = JSON.parse(raw) as PushSubscription } catch { return }
+      try { sub = JSON.parse(raw) as PushSubscription } catch { console.log('[fanOut] bad subscription JSON for key:', key); return }
+      console.log('[fanOut] sending push to endpoint:', sub.endpoint.slice(0, 60))
       const { expired } = await sendPush(sub, payload, env)
+      console.log('[fanOut] result for', key, '— expired:', expired)
       if (expired) await env.PUSH_KV.delete(key)
     }),
   )
@@ -112,24 +115,22 @@ function buildPayload(type: string, p: Record<string, unknown>): NotificationPay
   const name = (p.userName as string | undefined) ?? 'Someone'
   switch (type) {
     case 'feed-post':
-      return { title: 'Beast Mode', body: `${name} posted to the feed`, tag: 'feed-post', data: { url: '/?tab=feed' } }
+      return { title: 'Beast Mode', body: `${name} posted to the feed`, tag: `feed-post-${p.postId ?? Date.now()}`, data: { url: '/?tab=feed' } }
     case 'feed-reaction':
-      return { title: 'Beast Mode', body: `${name} reacted to your post ${p.emoji ?? ''}`, tag: `reaction-${p.postId}`, data: { url: `/?tab=feed&post=${p.postId}` } }
+      return { title: 'Beast Mode', body: `${name} reacted to your post ${p.emoji ?? ''}`, tag: `reaction-${p.postId}-${p.reactorId ?? name}`, data: { url: `/?tab=feed&post=${p.postId}` } }
     case 'feed-comment':
-      return { title: 'Beast Mode', body: `${name} commented on a post`, tag: `comment-${p.postId}`, data: { url: `/?tab=feed&post=${p.postId}` } }
+      return { title: 'Beast Mode', body: `${name} commented on a post`, tag: `comment-${p.postId}-${p.commenterId ?? name}`, data: { url: `/?tab=feed&post=${p.postId}` } }
     case 'daily-complete':
-      return { title: 'Beast Mode', body: `${name} crushed all their tasks today!`, tag: `daily-${p.date}`, data: { url: p.userId ? `/member/${p.userId}` : '/' } }
+      return { title: 'Beast Mode', body: `${name} crushed all their tasks today!`, tag: `daily-${p.date}-${p.userId ?? ''}`, data: { url: p.userId ? `/member/${p.userId}` : '/' } }
     case 'weekly-complete':
-      return { title: 'Beast Mode', body: `${name} completed all goals for the week!`, tag: `weekly-${p.weekStart}`, data: { url: p.userId ? `/member/${p.userId}` : '/' } }
-    case 'kudos-received':
-      return { title: 'Beast Mode', body: `${name} says you're a beast!`, tag: 'kudos', data: { url: '/?tab=community' } }
+      return { title: 'Beast Mode', body: `${name} completed all goals for the week!`, tag: `weekly-${p.weekStart}-${p.userId ?? ''}`, data: { url: p.userId ? `/member/${p.userId}` : '/' } }
     case 'gift-sent': {
       const toName = (p.toName as string | undefined) ?? 'You'
-      return { title: 'Beast Mode', body: `${name} sent you a beast kudos`, tag: `gift-${p.toUserId ?? ''}`, data: { url: `/?tab=feed&celebration=${encodeURIComponent(toName)}` } }
+      return { title: 'Beast Mode', body: `${name} sent you a beast kudos`, tag: `gift-${p.toUserId ?? ''}-${p.fromUserId ?? name}`, data: { url: `/?tab=feed&celebration=${encodeURIComponent(toName)}` } }
     }
     case 'celebration-sent': {
       const toName = (p.toName as string | undefined) ?? 'You'
-      return { title: 'Beast Mode', body: `${name} is cheering you on! 🎆`, tag: `celebration-${p.toUserId ?? ''}`, data: { url: `/?tab=feed&fireworks=${encodeURIComponent(toName)}` } }
+      return { title: 'Beast Mode', body: `${name} is cheering you on! 🎆`, tag: `celebration-${p.toUserId ?? ''}-${p.fromUserId ?? name}`, data: { url: `/?tab=feed&fireworks=${encodeURIComponent(toName)}` } }
     }
     default:
       return null

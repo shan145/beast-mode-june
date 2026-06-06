@@ -64,7 +64,6 @@ export type NotificationType =
   | 'feed-comment'
   | 'daily-complete'
   | 'weekly-complete'
-  | 'kudos-received'
   | 'gift-sent'
   | 'celebration-sent'
 

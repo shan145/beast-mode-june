@@ -26,16 +26,70 @@ export default function CelebrationGift({ fromName, onDismiss }: Props) {
   useEffect(() => { onDismissRef.current = onDismiss })
 
   useEffect(() => {
-    const colors = ['#f97316', '#fbbf24', '#34d399', '#818cf8', '#ec4899', '#06b6d4']
-    const t1 = setTimeout(() => setPhase('bursting'), 750)
-    const t2 = setTimeout(() => {
-      confetti({ particleCount: 150, spread: 100, origin: { x: 0.5, y: 0.45 }, startVelocity: 65, colors, zIndex: 9999 })
-      setTimeout(() => confetti({ particleCount: 70, spread: 110, origin: { x: 0.2, y: 0.5 }, angle: 55, colors, zIndex: 9999 }), 130)
-      setTimeout(() => confetti({ particleCount: 70, spread: 110, origin: { x: 0.8, y: 0.5 }, angle: 125, colors, zIndex: 9999 }), 260)
-    }, 880)
-    const t3 = setTimeout(() => setPhase('revealed'), 1050)
-    const t4 = setTimeout(() => onDismissRef.current(), 6000)
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4) }
+    const colors = ['#f97316', '#fbbf24', '#34d399', '#818cf8', '#ec4899', '#06b6d4', '#ffffff']
+    const warmGold = ['#f97316', '#fbbf24', '#fb923c', '#fdba74', '#fcd34d']
+
+    const timers: ReturnType<typeof setTimeout>[] = []
+    function after(ms: number, fn: () => void) {
+      const id = setTimeout(fn, ms)
+      timers.push(id)
+    }
+
+    after(750, () => setPhase('bursting'))
+
+    // Wave 1 — mega center explosion as lid flies
+    after(880, () => {
+      confetti({ particleCount: 220, spread: 130, origin: { x: 0.5, y: 0.45 }, startVelocity: 75, colors, zIndex: 9999, scalar: 1.1 })
+      confetti({ particleCount: 60, spread: 90, origin: { x: 0.5, y: 0.45 }, startVelocity: 65, colors: warmGold, zIndex: 9999, shapes: ['star'], scalar: 1.6 })
+    })
+    // Wave 2 — side cannons
+    after(1000, () => {
+      confetti({ particleCount: 130, spread: 60, origin: { x: 0, y: 0.65 }, angle: 65, startVelocity: 70, colors, zIndex: 9999 })
+      confetti({ particleCount: 130, spread: 60, origin: { x: 1, y: 0.65 }, angle: 115, startVelocity: 70, colors, zIndex: 9999 })
+    })
+    // Wave 3 — slow floaters fill the air
+    after(1100, () => {
+      confetti({ particleCount: 110, spread: 110, origin: { x: 0.5, y: 0.5 }, startVelocity: 40, colors, zIndex: 9999, gravity: 0.45, ticks: 300 })
+    })
+
+    after(1050, () => setPhase('revealed'))
+
+    // Wave 4 — ticker tape from top
+    after(1200, () => {
+      confetti({ particleCount: 120, spread: 220, origin: { x: 0.5, y: 0 }, startVelocity: 10, colors, zIndex: 9999, gravity: 0.2, flat: true, ticks: 450 })
+    })
+    // Wave 5 — upper corner star cannons
+    after(1400, () => {
+      confetti({ particleCount: 80, spread: 80, origin: { x: 0.08, y: 0.2 }, angle: 45, startVelocity: 55, colors: warmGold, zIndex: 9999, shapes: ['star'], scalar: 1.4 })
+      confetti({ particleCount: 80, spread: 80, origin: { x: 0.92, y: 0.2 }, angle: 135, startVelocity: 55, colors: warmGold, zIndex: 9999, shapes: ['star'], scalar: 1.4 })
+    })
+    // Wave 6 — wide double burst
+    after(1700, () => {
+      confetti({ particleCount: 140, spread: 120, origin: { x: 0.25, y: 0.4 }, startVelocity: 55, colors, zIndex: 9999, scalar: 0.9 })
+      confetti({ particleCount: 140, spread: 120, origin: { x: 0.75, y: 0.4 }, startVelocity: 55, colors, zIndex: 9999, scalar: 0.9 })
+    })
+    // Wave 7 — glitter shower
+    after(2100, () => {
+      confetti({ particleCount: 90, spread: 360, origin: { x: 0.5, y: 0.1 }, startVelocity: 22, colors, zIndex: 9999, gravity: 0.4, scalar: 0.55, ticks: 380 })
+    })
+    // Wave 8 — second side cannon salvo
+    after(2600, () => {
+      confetti({ particleCount: 100, spread: 55, origin: { x: 0, y: 0.55 }, angle: 62, startVelocity: 62, colors, zIndex: 9999 })
+      confetti({ particleCount: 100, spread: 55, origin: { x: 1, y: 0.55 }, angle: 118, startVelocity: 62, colors, zIndex: 9999 })
+    })
+    // Wave 9 — orbiting star ring
+    after(3000, () => {
+      confetti({ particleCount: 90, spread: 360, origin: { x: 0.5, y: 0.38 }, startVelocity: 30, colors: warmGold, zIndex: 9999, shapes: ['star'], scalar: 1.3, gravity: 0.55, ticks: 320 })
+    })
+    // Wave 10 — final sparkle burst
+    after(4000, () => {
+      confetti({ particleCount: 120, spread: 100, origin: { x: 0.5, y: 0.4 }, startVelocity: 50, colors, zIndex: 9999, scalar: 0.8 })
+      confetti({ particleCount: 50, spread: 70, origin: { x: 0.5, y: 0.4 }, startVelocity: 55, colors: warmGold, zIndex: 9999, shapes: ['star'], scalar: 1.2 })
+    })
+
+    after(6000, () => onDismissRef.current())
+
+    return () => timers.forEach(clearTimeout)
   }, [])
 
   return (

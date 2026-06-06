@@ -56,9 +56,9 @@ export default function PostForm({ userId, post, onClose }: Props) {
       if (post) {
         await updatePost(post.id, { caption, imageURLs })
       } else {
-        await createPost(userId, { imageURLs, caption })
+        const postId = await createPost(userId, { imageURLs, caption })
         const name = auth.currentUser?.displayName ?? 'Someone'
-        sendNotification('feed-post', { userName: name }, { excludeUserId: userId })
+        sendNotification('feed-post', { userName: name, postId }, { excludeUserId: userId })
       }
       onClose()
     } catch {
