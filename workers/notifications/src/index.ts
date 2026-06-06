@@ -1,3 +1,4 @@
+
 import { vapidAuthorization, encryptPushPayload, type PushSubscription } from './crypto'
 
 interface Env {
