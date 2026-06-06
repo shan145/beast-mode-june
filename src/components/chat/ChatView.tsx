@@ -218,7 +218,7 @@ function CreateGroupModal({
             onChange={e => setGroupName(e.target.value)}
             placeholder="Group name"
             maxLength={60}
-            className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-500/30 mb-3"
+            className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 rounded-xl px-3 py-2 text-[16px] outline-none focus:ring-2 focus:ring-orange-500/30 mb-3"
           />
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
             Select at least 2 people · {selected.size} selected
@@ -530,7 +530,7 @@ function ManageGroupModal({
                 onChange={e => setName(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') saveName() }}
                 maxLength={60}
-                className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-500/30"
+                className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 rounded-xl px-3 py-2 text-[16px] outline-none focus:ring-2 focus:ring-orange-500/30"
               />
               <button
                 onClick={saveName}
@@ -954,7 +954,7 @@ const selectedRoomId = selectedRoom?.id ?? null
   }, [rooms, roomMessages, roomSummaries, lastRead])
 
   return (
-    <div className="relative flex h-[calc(100vh-8rem)] md:h-[600px] rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+    <div className="relative flex h-full rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
 
       {/* Room list */}
       <div className={`w-full md:w-64 md:flex flex-col border-r border-gray-200 dark:border-gray-800 flex-shrink-0 ${
