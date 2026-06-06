@@ -69,7 +69,22 @@ async function sendPush(
     const errBody = await res.text().catch(() => '(unreadable)')
     console.error(`sendPush: push endpoint returned ${res.status}:`, errBody)
   }
-  return { expired: res.status === 404 || res.status === 410 }
+  return { expired: res.status === 404 || res.status === 410 || res.status === 403 }
+}
+
+// Derive a per-device KV key from the endpoint URL
+async function endpointKey(userId: string, endpoint: string): Promise<string> {
+  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(endpoint))
+  const hex = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 12)
+  return `sub_${userId}_${hex}`
+}
+
+// Returns all KV keys for a user: new per-device format + legacy single key
+async function keysForUser(userId: string, env: Env): Promise<string[]> {
+  const list = await env.PUSH_KV.list({ prefix: `sub_${userId}_` })
+  const keys: string[] = list.keys.map(k => k.name)
+  keys.push(`sub_${userId}`) // always include legacy key; null lookups are handled below
+  return keys
 }
 
 // Fan out a notification to either specific recipients or all except one
@@ -81,24 +96,27 @@ async function fanOut(
   let kvKeys: string[]
 
   if (opts.recipientIds && opts.recipientIds.length > 0) {
-    kvKeys = opts.recipientIds.map(id => `sub_${id}`)
+    const perUser = await Promise.all(opts.recipientIds.map(id => keysForUser(id, env)))
+    kvKeys = perUser.flat()
   } else {
     const list = await env.PUSH_KV.list({ prefix: 'sub_' })
     kvKeys = list.keys
       .map(k => k.name)
-      .filter(k => !opts.excludeUserId || k !== `sub_${opts.excludeUserId}`)
+      .filter(k => !opts.excludeUserId || (k !== `sub_${opts.excludeUserId}` && !k.startsWith(`sub_${opts.excludeUserId}_`)))
   }
 
-  console.log('[fanOut] keys to notify:', kvKeys)
+  // Deduplicate by endpoint so a device that has both old and new format keys
+  // doesn't receive the same notification twice
+  const seenEndpoints = new Set<string>()
   await Promise.all(
     kvKeys.map(async key => {
       const raw = await env.PUSH_KV.get(key)
-      if (!raw) { console.log('[fanOut] no subscription found for key:', key); return }
+      if (!raw) return
       let sub: PushSubscription
-      try { sub = JSON.parse(raw) as PushSubscription } catch { console.log('[fanOut] bad subscription JSON for key:', key); return }
-      console.log('[fanOut] sending push to endpoint:', sub.endpoint.slice(0, 60))
+      try { sub = JSON.parse(raw) as PushSubscription } catch { return }
+      if (seenEndpoints.has(sub.endpoint)) return
+      seenEndpoints.add(sub.endpoint)
       const { expired } = await sendPush(sub, payload, env)
-      console.log('[fanOut] result for', key, '— expired:', expired)
       if (expired) await env.PUSH_KV.delete(key)
     }),
   )
@@ -159,13 +177,27 @@ export default {
       if (!sub?.endpoint || !sub?.keys?.p256dh || !sub?.keys?.auth) {
         return json({ error: 'invalid subscription' }, 400)
       }
-      await env.PUSH_KV.put(`sub_${userId}`, JSON.stringify(sub))
+      const key = await endpointKey(userId, sub.endpoint)
+      await env.PUSH_KV.put(key, JSON.stringify(sub))
+      // Clean up legacy single-key entry for this same endpoint to avoid duplicates
+      const legacy = await env.PUSH_KV.get(`sub_${userId}`)
+      if (legacy) {
+        try {
+          if ((JSON.parse(legacy) as PushSubscription).endpoint === sub.endpoint) {
+            await env.PUSH_KV.delete(`sub_${userId}`)
+          }
+        } catch { /* leave it */ }
+      }
       return json({ ok: true })
     }
 
-    // Remove push subscription for this user
+    // Remove all push subscriptions for this user across all devices
     if (pathname === '/unsubscribe') {
-      await env.PUSH_KV.delete(`sub_${userId}`)
+      const list = await env.PUSH_KV.list({ prefix: `sub_${userId}_` })
+      await Promise.all([
+        ...list.keys.map(k => env.PUSH_KV.delete(k.name)),
+        env.PUSH_KV.delete(`sub_${userId}`),
+      ])
       return json({ ok: true })
     }
 
