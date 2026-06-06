@@ -67,9 +67,10 @@ export default function CommentSection({ postId, postAuthorId, currentUserId, us
       postAuthorId,
       ...comments.map(c => c.userId),
     ])).filter(id => id !== currentUserId)
+    console.log('[comment notify] postAuthorId:', postAuthorId, 'currentUserId:', currentUserId, 'recipientIds:', recipientIds)
     if (recipientIds.length > 0) {
       const name = auth.currentUser?.displayName ?? 'Someone'
-      sendNotification('feed-comment', { userName: name, postId }, { recipientIds })
+      sendNotification('feed-comment', { userName: name, postId, commenterId: currentUserId }, { recipientIds })
     }
   }
 

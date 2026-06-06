@@ -98,7 +98,7 @@ export default function MemberDashboard() {
     setBeastSent(true)
     const fromName = ownProfile?.displayName ?? currentUser.displayName ?? 'Someone'
     const toName = user?.displayName || user?.email || 'Someone'
-    sendNotification('gift-sent', { userName: fromName, toName, toUserId: uid }, { recipientIds: [uid] })
+    sendNotification('gift-sent', { userName: fromName, toName, toUserId: uid, fromUserId: currentUser.uid }, { recipientIds: [uid] })
     setTimeout(() => setBeastSent(false), 1500)
   }
 
@@ -108,7 +108,7 @@ export default function MemberDashboard() {
     setCelebSent(true)
     const fromName = ownProfile?.displayName ?? currentUser.displayName ?? 'Someone'
     const toName = user?.displayName || user?.email || 'Someone'
-    sendNotification('celebration-sent', { userName: fromName, toName, toUserId: uid }, { recipientIds: [uid] })
+    sendNotification('celebration-sent', { userName: fromName, toName, toUserId: uid, fromUserId: currentUser.uid }, { recipientIds: [uid] })
     setTimeout(() => setCelebSent(false), 1500)
   }
 

@@ -38,7 +38,7 @@ export default function MemberCard({ member, isYou, allDailyDoneToday, anyComple
     setSent(true)
     const fromName = currentUserName ?? currentUser.displayName ?? 'Someone'
     const toName = member.displayName || member.email || 'Someone'
-    sendNotification('gift-sent', { userName: fromName, toName, toUserId: member.uid }, { recipientIds: [member.uid] })
+    sendNotification('gift-sent', { userName: fromName, toName, toUserId: member.uid, fromUserId: currentUser.uid }, { recipientIds: [member.uid] })
     setTimeout(() => setSent(false), 1500)
   }
 
@@ -49,7 +49,7 @@ export default function MemberCard({ member, isYou, allDailyDoneToday, anyComple
     setCelebSent(true)
     const fromName = currentUserName ?? currentUser.displayName ?? 'Someone'
     const toName = member.displayName || member.email || 'Someone'
-    sendNotification('celebration-sent', { userName: fromName, toName, toUserId: member.uid }, { recipientIds: [member.uid] })
+    sendNotification('celebration-sent', { userName: fromName, toName, toUserId: member.uid, fromUserId: currentUser.uid }, { recipientIds: [member.uid] })
     setTimeout(() => setCelebSent(false), 1500)
   }
 

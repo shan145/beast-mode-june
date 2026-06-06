@@ -22,8 +22,16 @@ export function useVersionPolling() {
       }
     }
 
+    function onVisible() {
+      if (document.visibilityState === 'visible') check()
+    }
+
     check()
     const id = setInterval(check, INTERVAL_MS)
-    return () => clearInterval(id)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [])
 }

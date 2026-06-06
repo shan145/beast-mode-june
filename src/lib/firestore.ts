@@ -157,12 +157,13 @@ export async function fetchPostsPage(
 export async function createPost(
   userId: string,
   data: { imageURLs: string[]; caption: string },
-): Promise<void> {
-  await addDoc(collection(db, 'posts'), {
+): Promise<string> {
+  const ref = await addDoc(collection(db, 'posts'), {
     ...data,
     userId,
     createdAt: serverTimestamp(),
   })
+  return ref.id
 }
 
 export async function updatePost(
