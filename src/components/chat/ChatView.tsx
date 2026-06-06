@@ -24,12 +24,15 @@ function computeRoomUnread(
   messages: ChatMessage[],
   lastRead: Record<string, string>,
   summary: SummaryInfo | null | undefined,
+  currentUserId: string,
 ): number {
   const lastReadAt = lastRead[roomId]
   if (messages.length > 0) {
-    return lastReadAt ? messages.filter(m => m.sentAt > lastReadAt).length : messages.length
+    const others = messages.filter(m => m.userId !== currentUserId)
+    return lastReadAt ? others.filter(m => m.sentAt > lastReadAt).length : others.length
   }
-  return summary && (!lastReadAt || summary.sentAt > lastReadAt) ? 1 : 0
+  if (summary && summary.userId !== currentUserId && (!lastReadAt || summary.sentAt > lastReadAt)) return 1
+  return 0
 }
 
 // ── Room helpers ──────────────────────────────────────────────────────────────
@@ -506,7 +509,7 @@ function ManageGroupModal({
   return (
     <div className="absolute inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center p-4" onClick={onClose}>
       <div
-        className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm shadow-xl max-h-[80vh] flex flex-col"
+        className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm shadow-xl max-h-[calc(100%-2rem)] flex flex-col overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
@@ -519,7 +522,7 @@ function ManageGroupModal({
           </button>
         </div>
 
-        <div className="overflow-y-auto flex-1">
+        <div className="overflow-y-auto flex-1 overscroll-contain">
           {/* Name */}
           <div className="px-4 pt-4 pb-3">
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">Group Name</p>
@@ -634,6 +637,7 @@ function RoomList({
   messages,
   summaries,
   lastRead,
+  currentUserId,
   onCreateGroup,
 }: {
   rooms: Room[]
@@ -642,6 +646,7 @@ function RoomList({
   messages: Record<string, ChatMessage[]>
   summaries: Record<string, SummaryInfo | null>
   lastRead: Record<string, string>
+  currentUserId: string
   onCreateGroup: () => void
 }) {
   return (
@@ -663,7 +668,7 @@ function RoomList({
         {rooms.map(room => {
           const roomMsgs = messages[room.id] ?? []
           const lastMsg: { text: string; sentAt: string } | null = roomMsgs[roomMsgs.length - 1] ?? summaries[room.id] ?? null
-          const unread = computeRoomUnread(room.id, roomMsgs, lastRead, summaries[room.id])
+          const unread = computeRoomUnread(room.id, roomMsgs, lastRead, summaries[room.id], currentUserId)
 
           return (
             <button
@@ -758,8 +763,8 @@ export default function ChatView({ currentUserId, users, onUnreadChange }: Props
 
   // Sort rooms: unreads first, then by most recent message
   const sortedRooms = useMemo(() => [...rooms].sort((a, b) => {
-    const aUnread = computeRoomUnread(a.id, roomMessages[a.id] ?? [], lastRead, roomSummaries[a.id])
-    const bUnread = computeRoomUnread(b.id, roomMessages[b.id] ?? [], lastRead, roomSummaries[b.id])
+    const aUnread = computeRoomUnread(a.id, roomMessages[a.id] ?? [], lastRead, roomSummaries[a.id], currentUserId)
+    const bUnread = computeRoomUnread(b.id, roomMessages[b.id] ?? [], lastRead, roomSummaries[b.id], currentUserId)
     if (aUnread > 0 && bUnread === 0) return -1
     if (aUnread === 0 && bUnread > 0) return 1
     const aMsgs = roomMessages[a.id] ?? []
@@ -948,7 +953,7 @@ const selectedRoomId = selectedRoom?.id ?? null
 
   useEffect(() => {
     const total = rooms.reduce((sum, room) => {
-      return sum + computeRoomUnread(room.id, roomMessages[room.id] ?? [], lastRead, roomSummaries[room.id])
+      return sum + computeRoomUnread(room.id, roomMessages[room.id] ?? [], lastRead, roomSummaries[room.id], currentUserId)
     }, 0)
     onUnreadChangeRef.current?.(total)
   }, [rooms, roomMessages, roomSummaries, lastRead])
@@ -967,6 +972,7 @@ const selectedRoomId = selectedRoom?.id ?? null
           messages={roomMessages}
           summaries={roomSummaries}
           lastRead={lastRead}
+          currentUserId={currentUserId}
           onCreateGroup={() => setShowCreateGroup(true)}
         />
       </div>
