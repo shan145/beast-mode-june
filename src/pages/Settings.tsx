@@ -6,6 +6,7 @@ import { useUser } from '@/hooks/useUser'
 import { updateUserDisplayName } from '@/lib/firestore'
 import { auth } from '@/lib/firebase'
 import { useTheme } from '@/contexts/ThemeContext'
+import { registerPushSubscription } from '@/lib/pushNotifications'
 
 function SunIcon() {
   return (
@@ -24,6 +25,8 @@ function MoonIcon() {
   )
 }
 
+type NotifStatus = 'loading' | 'unsupported' | 'denied' | 'subscribed' | 'unsubscribed'
+
 export default function Settings() {
   const { firebaseUser } = useAuth()
   const { user: ownProfile } = useUser(firebaseUser?.uid)
@@ -34,6 +37,35 @@ export default function Settings() {
   const [nameInput, setNameInput] = useState(currentName)
   const [nameSaving, setNameSaving] = useState(false)
   const [nameSaved, setNameSaved] = useState(false)
+
+  const [notifStatus, setNotifStatus] = useState<NotifStatus>('loading')
+  const [notifBusy, setNotifBusy] = useState(false)
+
+  useEffect(() => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+      setNotifStatus('unsupported')
+      return
+    }
+    if (Notification.permission === 'denied') {
+      setNotifStatus('denied')
+      return
+    }
+    navigator.serviceWorker.getRegistration('/sw.js')
+      .then(reg => reg ? reg.pushManager.getSubscription() : null)
+      .then(sub => setNotifStatus(sub ? 'subscribed' : 'unsubscribed'))
+      .catch(() => setNotifStatus('unsubscribed'))
+  }, [])
+
+  async function enableNotifications() {
+    setNotifBusy(true)
+    const ok = await registerPushSubscription()
+    if (ok) {
+      setNotifStatus('subscribed')
+    } else if (Notification.permission === 'denied') {
+      setNotifStatus('denied')
+    }
+    setNotifBusy(false)
+  }
 
   // Populate input once the Firestore profile loads
   useEffect(() => {
@@ -126,6 +158,44 @@ export default function Settings() {
             </button>
           </div>
         </section>
+
+        {/* Notifications */}
+        {notifStatus !== 'unsupported' && (
+          <section>
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-3">Notifications</h2>
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
+              <div className="px-4 py-4 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">Push notifications</p>
+                  {notifStatus === 'denied' && (
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Blocked — enable in iOS Settings &gt; Safari</p>
+                  )}
+                  {notifStatus === 'subscribed' && (
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">You'll be notified of group activity</p>
+                  )}
+                </div>
+                {notifStatus === 'subscribed' && (
+                  <span className="flex items-center gap-1.5 text-sm text-green-500 font-medium">
+                    <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
+                    On
+                  </span>
+                )}
+                {(notifStatus === 'unsubscribed' || notifStatus === 'loading') && (
+                  <button
+                    onClick={enableNotifications}
+                    disabled={notifBusy || notifStatus === 'loading'}
+                    className="px-4 py-2 bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white font-semibold rounded-lg text-sm transition"
+                  >
+                    {notifBusy ? 'Enabling…' : 'Enable'}
+                  </button>
+                )}
+                {notifStatus === 'denied' && (
+                  <span className="text-sm text-gray-400 dark:text-gray-500">Blocked</span>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Account */}
         <section>
