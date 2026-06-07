@@ -723,11 +723,12 @@ interface Props {
   currentUserId: string
   users: UserProfile[]
   onUnreadChange?: (count: number) => void
+  active?: boolean
 }
 
 type ConfirmAction = 'leave' | 'delete' | null
 
-export default function ChatView({ currentUserId, users, onUnreadChange }: Props) {
+export default function ChatView({ currentUserId, users, onUnreadChange, active = true }: Props) {
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null)
   const [mobileView, setMobileView] = useState<'rooms' | 'messages'>('rooms')
   const [roomMessages, setRoomMessages] = useState<Record<string, ChatMessage[]>>({})
@@ -1077,6 +1078,8 @@ const selectedRoomId = selectedRoom?.id ?? null
               currentUserId={currentUserId}
               users={users}
               onMessages={handleMessages}
+              active={active}
+              onRead={markRoomRead}
             />
           </>
         ) : (
@@ -1129,12 +1132,16 @@ function MessageAreaWithSync({
   currentUserId,
   users,
   onMessages,
+  active,
+  onRead,
 }: {
   roomId: string
   isGroup: boolean
   currentUserId: string
   users: UserProfile[]
   onMessages: (msgs: ChatMessage[]) => void
+  active: boolean
+  onRead: (roomId: string) => void
 }) {
   const { messages, typingUsers, connected, send, sendTyping } = useChat(roomId)
   const [input, setInput] = useState('')
@@ -1154,9 +1161,12 @@ function MessageAreaWithSync({
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, typingUsers])
 
+  // Only mark messages as read while this room is actually visible to the user —
+  // ChatView stays mounted (hidden) on other tabs to keep the WS alive, so without
+  // the `active` check, incoming messages would be silently marked read in the background.
   useEffect(() => {
-    if (messages.length > 0) persistLastRead(roomId)
-  }, [roomId, messages.length])
+    if (active && messages.length > 0) onRead(roomId)
+  }, [active, roomId, messages.length, onRead])
 
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value)

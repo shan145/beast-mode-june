@@ -120,6 +120,7 @@ src/
 {
   fromUserId: string
   toUserId: string
+  type: 'beast' | 'celebration'
   date: string        // "YYYY-MM-DD" ET — the day the recipient completed all tasks
   createdAt: Timestamp | null
 }

@@ -236,10 +236,11 @@ export async function toggleReaction(userId: string, postId: string, emoji: stri
 
 // ---- Kudos ----
 
-export async function addKudos(fromUserId: string, toUserId: string, date: string): Promise<void> {
+export async function addKudos(fromUserId: string, toUserId: string, type: Kudos['type'], date: string): Promise<void> {
   await addDoc(collection(db, 'kudos'), {
     fromUserId,
     toUserId,
+    type,
     date,
     createdAt: serverTimestamp(),
   })
@@ -249,6 +250,19 @@ export function subscribeToKudosReceived(toUserId: string, date: string, cb: (ku
   const q = query(
     collection(db, 'kudos'),
     where('toUserId', '==', toUserId),
+    where('date', '==', date),
+  )
+  return onSnapshot(q, snap => {
+    cb(snap.docs.map(d => ({ id: d.id, ...d.data() } as Kudos)))
+  })
+}
+
+// Kudos the current user has already sent today — drives the persistent "Sent!" state
+// on Send Beast Kudos / Send Celebration buttons (both the member list and member page).
+export function subscribeToKudosSent(fromUserId: string, date: string, cb: (kudos: Kudos[]) => void): Unsubscribe {
+  const q = query(
+    collection(db, 'kudos'),
+    where('fromUserId', '==', fromUserId),
     where('date', '==', date),
   )
   return onSnapshot(q, snap => {

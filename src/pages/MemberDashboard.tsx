@@ -4,8 +4,10 @@ import { useAuth } from '@/hooks/useAuth'
 import { useUser } from '@/hooks/useUser'
 import { useGoals } from '@/hooks/useGoals'
 import { useCompletions } from '@/hooks/useCompletions'
+import { useKudosSentToday } from '@/hooks/useKudosSentToday'
 import { useTheme } from '@/contexts/ThemeContext'
 import { sendNotification } from '@/lib/pushNotifications'
+import { addKudos } from '@/lib/firestore'
 import { auth } from '@/lib/firebase'
 import { todayET } from '@/lib/time'
 import DailyChecklist from '@/components/checklist/DailyChecklist'
@@ -73,9 +75,12 @@ export default function MemberDashboard() {
   const { user: ownProfile } = useUser(firebaseUser?.uid)
   const { goals, loading: goalsLoading } = useGoals(uid)
   const { completions, loading: completionsLoading } = useCompletions(uid)
+  const { hasSent: hasSentKudos } = useKudosSentToday(firebaseUser?.uid)
   const [tab, setTab] = useState<Tab>('today')
-  const [beastSent, setBeastSent] = useState(false)
-  const [celebSent, setCelebSent] = useState(false)
+  const [beastSending, setBeastSending] = useState(false)
+  const [celebSending, setCelebSending] = useState(false)
+  const beastSent = (uid ? hasSentKudos(uid, 'beast') : false) || beastSending
+  const celebSent = (uid ? hasSentKudos(uid, 'celebration') : false) || celebSending
 
   const loading = userLoading || goalsLoading || completionsLoading
   const isCurrentUser = firebaseUser?.uid === uid
@@ -94,22 +99,30 @@ export default function MemberDashboard() {
 
   async function handleBeast() {
     const currentUser = auth.currentUser
-    if (!currentUser || !uid) return
-    setBeastSent(true)
+    if (!currentUser || !uid || beastSent) return
+    setBeastSending(true)
     const fromName = ownProfile?.displayName ?? currentUser.displayName ?? 'Someone'
     const toName = user?.displayName || user?.email || 'Someone'
     sendNotification('gift-sent', { userName: fromName, toName, toUserId: uid, fromUserId: currentUser.uid }, { recipientIds: [uid] })
-    setTimeout(() => setBeastSent(false), 1500)
+    try {
+      await addKudos(currentUser.uid, uid, 'beast', todayET())
+    } catch {
+      setBeastSending(false)
+    }
   }
 
   async function handleCelebration() {
     const currentUser = auth.currentUser
-    if (!currentUser || !uid) return
-    setCelebSent(true)
+    if (!currentUser || !uid || celebSent) return
+    setCelebSending(true)
     const fromName = ownProfile?.displayName ?? currentUser.displayName ?? 'Someone'
     const toName = user?.displayName || user?.email || 'Someone'
     sendNotification('celebration-sent', { userName: fromName, toName, toUserId: uid, fromUserId: currentUser.uid }, { recipientIds: [uid] })
-    setTimeout(() => setCelebSent(false), 1500)
+    try {
+      await addKudos(currentUser.uid, uid, 'celebration', todayET())
+    } catch {
+      setCelebSending(false)
+    }
   }
 
   const displayName = user?.displayName || user?.email || 'Member'
@@ -120,7 +133,7 @@ export default function MemberDashboard() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white">
       <header className="border-b border-gray-200 dark:border-gray-800 px-6 pb-4 flex items-center gap-3" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 1rem)' }}>
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/?tab=community')}
           className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition flex items-center gap-1.5 text-sm shrink-0"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -177,7 +190,7 @@ export default function MemberDashboard() {
                           : 'bg-white text-orange-500 hover:bg-orange-50 active:bg-orange-100 shadow-sm'
                         }`}
                     >
-                      {beastSent ? 'Sent! 🎉' : 'Send Beast Kudos'}
+                      {beastSent ? 'Sent!' : 'Send Beast Kudos'}
                     </button>
                   </div>
                 )}
@@ -196,7 +209,7 @@ export default function MemberDashboard() {
                           : 'bg-white text-sky-500 hover:bg-sky-50 active:bg-sky-100 shadow-sm'
                         }`}
                     >
-                      {celebSent ? 'Sent! 🎉' : 'Send Celebration'}
+                      {celebSent ? 'Sent!' : 'Send Celebration'}
                     </button>
                   </div>
                 )}
