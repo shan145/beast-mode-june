@@ -117,13 +117,15 @@ function computeStats(
 
     let weekPts = 0
 
-    // Daily goals: +2 per completion, -1 per miss (past days only — today is not yet penalized)
+    // Daily goals: +2 per completion, -1 per miss (past days only — today is not yet
+    // penalized, UNLESS today is the week's last day, in which case the week is being
+    // scored as "done" and an incomplete today must count as a miss for the bonus check)
     let perfectDailyWeek = dailyGoals.length > 0
     for (const goal of dailyGoals) {
       for (const date of elapsed) {
         if (comps.some(c => c.goalId === goal.id && c.date === date)) {
           weekPts += 2
-        } else if (date < today) {
+        } else if (date < today || (date === today && weekDone)) {
           weekPts -= 1
           perfectDailyWeek = false
         }
@@ -355,13 +357,14 @@ export function computeBeastBreakdown(
     const lines: BreakdownLine[] = []
     let weekPts = 0
 
-    // Daily goals (today is not penalized — only past days count as misses)
+    // Daily goals (today is not penalized — unless today is the week's last day,
+    // in which case the week is scored as "done" and today counts like any other day)
     let perfectDailyWeek = dailyGoals.length > 0
     for (const goal of dailyGoals) {
       let done = 0, missed = 0
       for (const date of elapsed) {
         if (comps.some(c => c.goalId === goal.id && c.date === date)) done++
-        else if (date < today) missed++
+        else if (date < today || (date === today && weekDone)) missed++
       }
       if (missed > 0) perfectDailyWeek = false
       const pts = done * 2 - missed

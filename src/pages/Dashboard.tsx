@@ -82,16 +82,13 @@ const BASE_TABS: Omit<TabDef<Tab>, 'badge'>[] = [
       </svg>
     ),
   },
-  {
-    id: 'chat',
-    label: 'Chat',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-      </svg>
-    ),
-  },
 ]
+
+const ChatIcon = (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+  </svg>
+)
 
 export default function Dashboard() {
   const { firebaseUser } = useAuth()
@@ -136,6 +133,11 @@ export default function Dashboard() {
   const tab = (searchParams.get('tab') as Tab) ?? (localStorage.getItem('beast_mode_tab') as Tab) ?? 'today'
   const celebrationName = searchParams.get('celebration')
   const fireworksName = searchParams.get('fireworks')
+
+  function selectTab(t: Tab) {
+    localStorage.setItem('beast_mode_tab', t)
+    setSearchParams({ tab: t })
+  }
 
   function dismissCelebration() {
     setSearchParams(p => { p.delete('celebration'); return p }, { replace: true })
@@ -201,6 +203,22 @@ export default function Dashboard() {
             </button>
           )}
           <button
+            onClick={() => selectTab('chat')}
+            className={`relative p-1.5 rounded-lg transition ${
+              tab === 'chat'
+                ? 'text-orange-500'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
+            }`}
+            aria-label="Chat"
+          >
+            {ChatIcon}
+            {tab !== 'chat' && chatUnread > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-orange-500 text-white text-[9px] font-bold flex items-center justify-center leading-none">
+                {chatUnread > 99 ? '99+' : chatUnread}
+              </span>
+            )}
+          </button>
+          <button
             onClick={toggleTheme}
             className="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition"
             aria-label="Toggle theme"
@@ -222,9 +240,9 @@ export default function Dashboard() {
 
       <div className={tab === 'chat' ? 'flex-shrink-0' : ''}>
         <NavTabs
-          tabs={BASE_TABS.map(t => ({ ...t, badge: t.id === 'chat' && tab !== 'chat' ? chatUnread : undefined }))}
+          tabs={BASE_TABS}
           active={tab}
-          onChange={t => { localStorage.setItem('beast_mode_tab', t); setSearchParams({ tab: t }) }}
+          onChange={selectTab}
         />
       </div>
 
@@ -239,6 +257,7 @@ export default function Dashboard() {
               currentUserId={firebaseUser.uid}
               users={users}
               onUnreadChange={setChatUnread}
+              active={tab === 'chat'}
             />
           </div>
         )}
