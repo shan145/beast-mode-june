@@ -52,10 +52,12 @@ export interface LeaderboardMetric {
 
 interface UserStats {
   beastScore: number
+  weeklyBeastScore: number
   perfectDays: number
   totalSessions: number
   longestStreak: number
   feedPosts: number
+  weekFeedPosts: number
   postDays: number
   weeklyGoalsMet: number
 }
@@ -72,6 +74,8 @@ function computeStats(
   const dailyGoals = goals.filter(g => g.frequency.type === 'daily')
   const weeklyGoals = goals.filter(g => g.frequency.type === 'weekly')
   const days = juneDaysUpTo(today)
+  const currentWeekStart = weekStart(today)
+  const currentWeekEnd = weekEnd(today)
 
   // Perfect days: all daily goals done on that day
   let perfectDays = 0
@@ -108,8 +112,10 @@ function computeStats(
   }
   const postDays = postDaySet.size
 
-  // Beast score: per-week accounting with bonuses and penalties
+  // Beast score: per-week accounting with bonuses and penalties.
+  // Resets each week — `weeklyBeastScore` tracks only the week containing `today`.
   let beastScore = 0
+  let weeklyBeastScore = 0
   for (const week of JUNE_WEEKS) {
     if (week.start > today) break
     const weekDone = week.end <= today
@@ -156,9 +162,24 @@ function computeStats(
     }
 
     beastScore += weekPts
+    if (week.start === currentWeekStart) weeklyBeastScore = weekPts
   }
   beastScore += postDays * 2
   beastScore = Math.max(0, beastScore)
+
+  // Posts/post-days within the current week only — feed bonus resets weekly alongside the score
+  const weekPostDaySet = new Set<string>()
+  let weekFeedPosts = 0
+  for (const p of allPosts.filter(p => p.userId === uid)) {
+    if (!p.createdAt) continue
+    const dateStr = toETDateString(p.createdAt.toDate())
+    if (dateStr >= currentWeekStart && dateStr <= currentWeekEnd) {
+      weekFeedPosts++
+      weekPostDaySet.add(dateStr)
+    }
+  }
+  weeklyBeastScore += weekPostDaySet.size * 2
+  weeklyBeastScore = Math.max(0, weeklyBeastScore)
 
   // Longest streak: consecutive days with at least one completion
   let longestStreak = 0
@@ -184,10 +205,10 @@ function computeStats(
     }
   }
 
-  return { beastScore, perfectDays, totalSessions, longestStreak, feedPosts, postDays, weeklyGoalsMet }
+  return { beastScore, weeklyBeastScore, perfectDays, totalSessions, longestStreak, feedPosts, weekFeedPosts, postDays, weeklyGoalsMet }
 }
 
-const EMPTY_STATS: UserStats = { beastScore: 0, perfectDays: 0, totalSessions: 0, longestStreak: 0, feedPosts: 0, postDays: 0, weeklyGoalsMet: 0 }
+const EMPTY_STATS: UserStats = { beastScore: 0, weeklyBeastScore: 0, perfectDays: 0, totalSessions: 0, longestStreak: 0, feedPosts: 0, weekFeedPosts: 0, postDays: 0, weeklyGoalsMet: 0 }
 
 function getUserRankEntry(
   uid: string,
@@ -282,12 +303,12 @@ export function computeLeaderboard(
   const posts = (n: number) => `${n} post${n !== 1 ? 's' : ''}`
 
   return [
-    { id: 'beast',        name: 'Beast Score',      description: 'Tap ⓘ to see how points are calculated',                ...top3(s => s.beastScore,     pts,         undefined)             },
+    { id: 'beast',        name: 'Beast Score',      description: 'Tap ⓘ to see how points are calculated',                ...top3(s => s.weeklyBeastScore, pts,       undefined)             },
     { id: 'consistent',   name: 'Most Consistent',  description: 'Days with every daily goal completed',                    ...top3(s => s.perfectDays,   days,        usersWithDailyGoals)   },
     { id: 'weekly-grind', name: 'Weekly Grind',      description: 'Weekly goals where full quota was hit',                   ...top3(s => s.weeklyGoalsMet, completions, usersWithWeeklyGoals)  },
     { id: 'sessions',     name: 'Total Completions', description: 'Total completions logged all of June',                   ...top3(s => s.totalSessions, completions, undefined)             },
     { id: 'streak',       name: 'Longest Streak',   description: 'Most consecutive days with any completion',               ...top3(s => s.longestStreak, days,        undefined)             },
-    { id: 'feed-posts',   name: 'Feed Posting',      description: 'Total posts shared to the feed',                         ...top3(s => s.feedPosts,     posts,       undefined)             },
+    { id: 'feed-posts',   name: 'Feed Posting',      description: 'Posts shared to the feed this week',                     ...top3(s => s.weekFeedPosts, posts,       undefined)             },
   ]
 }
 
@@ -311,6 +332,7 @@ export interface WeekBreakdown {
 
 export interface BeastBreakdown {
   totalScore: number
+  currentWeekScore: number
   weeks: WeekBreakdown[]
   postDays: number
   postPts: number
@@ -335,17 +357,22 @@ export function computeBeastBreakdown(
   const comps = allCompletions.filter(c => c.userId === uid)
   const dailyGoals = goals.filter(g => g.frequency.type === 'daily')
   const weeklyGoals = goals.filter(g => g.frequency.type === 'weekly')
+  const currentWeekStart = weekStart(today)
+  const currentWeekEnd = weekEnd(today)
 
   const postDaySet = new Set<string>()
+  const currentWeekPostDaySet = new Set<string>()
   for (const p of allPosts.filter(p => p.userId === uid)) {
     if (!p.createdAt) continue
     const dateStr = toETDateString(p.createdAt.toDate())
     if (dateStr >= '2026-06-01' && dateStr <= '2026-06-30') postDaySet.add(dateStr)
+    if (dateStr >= currentWeekStart && dateStr <= currentWeekEnd) currentWeekPostDaySet.add(dateStr)
   }
   const postDays = postDaySet.size
   const postPts = postDays * 2
 
   let totalScore = postPts
+  let currentWeekBaseScore = 0
   const weeks: WeekBreakdown[] = []
 
   for (const week of JUNE_WEEKS) {
@@ -417,8 +444,11 @@ export function computeBeastBreakdown(
     }
 
     totalScore += weekPts
+    if (week.start === currentWeekStart) currentWeekBaseScore = weekPts
     weeks.push({ label: formatWeekLabel(week), total: weekPts, weekDone, lines })
   }
 
-  return { totalScore, weeks, postDays, postPts }
+  const currentWeekScore = Math.max(0, currentWeekBaseScore + currentWeekPostDaySet.size * 2)
+
+  return { totalScore, currentWeekScore, weeks, postDays, postPts }
 }
