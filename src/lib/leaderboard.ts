@@ -62,6 +62,109 @@ interface UserStats {
   weeklyGoalsMet: number
 }
 
+// ── Per-week Beast Score scoring (shared by stats, breakdowns, and the archive) ──
+
+export type BreakdownChip = { text: string; color: 'green' | 'red' | 'orange' | 'gray' }
+
+export interface BreakdownLine {
+  label: string
+  parts?: BreakdownChip[]
+  pts: number
+  isBonus?: boolean
+}
+
+interface WeekScore {
+  weekPts: number
+  weekDone: boolean
+  lines: BreakdownLine[]
+}
+
+// Scores a single Sun–Sat week for one user's goals, producing both the point
+// total and the line-item breakdown (so both can be derived from one pass).
+function computeWeekScore(
+  week: { start: string; end: string },
+  dailyGoals: Goal[],
+  weeklyGoals: Goal[],
+  comps: Completion[],
+  today: string,
+): WeekScore {
+  const weekDone = week.end <= today
+  const elapsed = daysInWeek(week, today)
+  const lines: BreakdownLine[] = []
+  let weekPts = 0
+
+  // Daily goals: +2 per completion, -1 per miss (past days only — today is not yet
+  // penalized, UNLESS today is the week's last day, in which case the week is being
+  // scored as "done" and an incomplete today must count as a miss for the bonus check)
+  let perfectDailyWeek = dailyGoals.length > 0
+  for (const goal of dailyGoals) {
+    let done = 0, missed = 0
+    for (const date of elapsed) {
+      if (comps.some(c => c.goalId === goal.id && c.date === date)) done++
+      else if (date < today || (date === today && weekDone)) missed++
+    }
+    if (missed > 0) perfectDailyWeek = false
+    const pts = done * 2 - missed
+    weekPts += pts
+    const parts: BreakdownChip[] = []
+    if (done > 0) parts.push({ text: `${done} done`, color: 'green' })
+    if (missed > 0) parts.push({ text: `${missed} missed`, color: 'red' })
+    lines.push({ label: goal.title, parts, pts })
+  }
+  if (perfectDailyWeek && weekDone) {
+    weekPts += 10
+    lines.push({ label: 'Perfect daily week', pts: 10, isBonus: true })
+  }
+
+  // Weekly goals: +3 per completion (up to quota), +5 per goal when quota met,
+  // -2 per missed session (only after week ends), +10 when all quotas met
+  let allWeeklyMet = weeklyGoals.length > 0
+  for (const goal of weeklyGoals) {
+    const count = comps.filter(
+      c => c.goalId === goal.id && c.date >= week.start && c.date <= week.end
+    ).length
+    const effective = Math.min(count, goal.frequency.daysPerWeek)
+    const basePts = effective * 3
+    let quotaBonus = 0, penalty = 0
+    if (count >= goal.frequency.daysPerWeek) {
+      quotaBonus = 5
+    } else {
+      allWeeklyMet = false
+      if (weekDone) penalty = (goal.frequency.daysPerWeek - count) * 2
+    }
+    const pts = basePts + quotaBonus - penalty
+    weekPts += pts
+    const parts: BreakdownChip[] = []
+    parts.push({ text: `${effective}/${goal.frequency.daysPerWeek} sessions`, color: count >= goal.frequency.daysPerWeek ? 'green' : 'orange' })
+    if (quotaBonus > 0) parts.push({ text: 'quota bonus', color: 'orange' })
+    if (penalty > 0) parts.push({ text: `${goal.frequency.daysPerWeek - count} missed`, color: 'red' })
+    lines.push({ label: `${goal.title} (${goal.frequency.daysPerWeek}×/wk)`, parts, pts })
+  }
+  if (allWeeklyMet) {
+    weekPts += 10
+    lines.push({ label: 'All weekly goals met', pts: 10, isBonus: true })
+  }
+
+  // Beast week combo: all dailies perfect + all weekly quotas met (only confirmed at week end)
+  if (weekDone && dailyGoals.length > 0 && weeklyGoals.length > 0 && perfectDailyWeek && allWeeklyMet) {
+    weekPts += 25
+    lines.push({ label: 'Beast Week', pts: 25, isBonus: true })
+  }
+
+  return { weekPts, weekDone, lines }
+}
+
+// Unique post days (max 1 credit/day, ET) a user logged within `[start, end]`
+function postDaysInRange(uid: string, allPosts: Post[], start: string, end: string): number {
+  const daySet = new Set<string>()
+  for (const p of allPosts.filter(p => p.userId === uid)) {
+    if (!p.createdAt) continue
+    const dateStr = toETDateString(p.createdAt.toDate())
+    if (dateStr >= start && dateStr <= end) daySet.add(dateStr)
+  }
+  return daySet.size
+}
+
 function computeStats(
   uid: string,
   allGoals: Goal[],
@@ -104,13 +207,7 @@ function computeStats(
   const totalSessions = comps.length
 
   // Unique June days the user posted to the feed (max 1 credit per day, Eastern Time)
-  const postDaySet = new Set<string>()
-  for (const p of allPosts.filter(p => p.userId === uid)) {
-    if (!p.createdAt) continue
-    const dateStr = toETDateString(p.createdAt.toDate())
-    if (dateStr >= '2026-06-01' && dateStr <= '2026-06-30') postDaySet.add(dateStr)
-  }
-  const postDays = postDaySet.size
+  const postDays = postDaysInRange(uid, allPosts, '2026-06-01', '2026-06-30')
 
   // Beast score: per-week accounting with bonuses and penalties.
   // Resets each week — `weeklyBeastScore` tracks only the week containing `today`.
@@ -118,68 +215,21 @@ function computeStats(
   let weeklyBeastScore = 0
   for (const week of JUNE_WEEKS) {
     if (week.start > today) break
-    const weekDone = week.end <= today
-    const elapsed = daysInWeek(week, today)
-
-    let weekPts = 0
-
-    // Daily goals: +2 per completion, -1 per miss (past days only — today is not yet
-    // penalized, UNLESS today is the week's last day, in which case the week is being
-    // scored as "done" and an incomplete today must count as a miss for the bonus check)
-    let perfectDailyWeek = dailyGoals.length > 0
-    for (const goal of dailyGoals) {
-      for (const date of elapsed) {
-        if (comps.some(c => c.goalId === goal.id && c.date === date)) {
-          weekPts += 2
-        } else if (date < today || (date === today && weekDone)) {
-          weekPts -= 1
-          perfectDailyWeek = false
-        }
-      }
-    }
-    if (perfectDailyWeek && weekDone) weekPts += 10
-
-    // Weekly goals: +3 per completion (up to quota), +5 per goal when quota met,
-    // -2 per missed session (only after week ends), +10 when all quotas met
-    let allWeeklyMet = weeklyGoals.length > 0
-    for (const goal of weeklyGoals) {
-      const count = comps.filter(
-        c => c.goalId === goal.id && c.date >= week.start && c.date <= week.end
-      ).length
-      weekPts += Math.min(count, goal.frequency.daysPerWeek) * 3
-      if (count >= goal.frequency.daysPerWeek) {
-        weekPts += 5
-      } else {
-        allWeeklyMet = false
-        if (weekDone) weekPts -= (goal.frequency.daysPerWeek - count) * 2
-      }
-    }
-    if (allWeeklyMet) weekPts += 10
-
-    // Beast week combo: all dailies perfect + all weekly quotas met (only confirmed at week end)
-    if (weekDone && dailyGoals.length > 0 && weeklyGoals.length > 0 && perfectDailyWeek && allWeeklyMet) {
-      weekPts += 25
-    }
-
+    const { weekPts } = computeWeekScore(week, dailyGoals, weeklyGoals, comps, today)
     beastScore += weekPts
     if (week.start === currentWeekStart) weeklyBeastScore = weekPts
   }
   beastScore += postDays * 2
   beastScore = Math.max(0, beastScore)
 
-  // Posts/post-days within the current week only — feed bonus resets weekly alongside the score
-  const weekPostDaySet = new Set<string>()
-  let weekFeedPosts = 0
-  for (const p of allPosts.filter(p => p.userId === uid)) {
-    if (!p.createdAt) continue
+  // Feed posting within the current week only — resets weekly alongside the score
+  const weekFeedPosts = allPosts.filter(p => {
+    if (p.userId !== uid || !p.createdAt) return false
     const dateStr = toETDateString(p.createdAt.toDate())
-    if (dateStr >= currentWeekStart && dateStr <= currentWeekEnd) {
-      weekFeedPosts++
-      weekPostDaySet.add(dateStr)
-    }
-  }
-  weeklyBeastScore += weekPostDaySet.size * 2
-  weeklyBeastScore = Math.max(0, weeklyBeastScore)
+    return dateStr >= currentWeekStart && dateStr <= currentWeekEnd
+  }).length
+  const weekPostDays = postDaysInRange(uid, allPosts, currentWeekStart, currentWeekEnd)
+  weeklyBeastScore = Math.max(0, weeklyBeastScore + weekPostDays * 2)
 
   // Longest streak: consecutive days with at least one completion
   let longestStreak = 0
@@ -210,17 +260,18 @@ function computeStats(
 
 const EMPTY_STATS: UserStats = { beastScore: 0, weeklyBeastScore: 0, perfectDays: 0, totalSessions: 0, longestStreak: 0, feedPosts: 0, weekFeedPosts: 0, postDays: 0, weeklyGoalsMet: 0 }
 
-function getUserRankEntry(
+// ── Ranking primitives — operate on plain (uid, score) pairs so they can rank
+// either live UserStats-derived scores or one-off per-week archive scores ──────
+
+interface ScoredUser { uid: string; score: number }
+
+function rankOfUser(
   uid: string,
-  eligibleUsers: UserProfile[],
-  getValue: (s: UserStats) => number,
+  scored: ScoredUser[],
   formatLabel: (n: number) => string,
-  statsMap: Map<string, UserStats>,
 ): RankEntry | undefined {
-  if (!eligibleUsers.some(u => u.uid === uid)) return undefined
-  const sorted = eligibleUsers
-    .map(u => ({ uid: u.uid, score: getValue(statsMap.get(u.uid) ?? EMPTY_STATS) }))
-    .sort((a, b) => b.score - a.score)
+  if (!scored.some(s => s.uid === uid)) return undefined
+  const sorted = [...scored].sort((a, b) => b.score - a.score)
 
   let i = 0
   let rank = 1
@@ -236,15 +287,11 @@ function getUserRankEntry(
   return undefined
 }
 
-function getTop3(
-  users: UserProfile[],
-  getValue: (s: UserStats) => number,
+function rankTop3(
+  scored: ScoredUser[],
   formatLabel: (n: number) => string,
-  statsMap: Map<string, UserStats>,
 ): { entries: RankEntry[]; maxScore: number } {
-  const sorted = users
-    .map(u => ({ uid: u.uid, score: getValue(statsMap.get(u.uid) ?? EMPTY_STATS) }))
-    .sort((a, b) => b.score - a.score)
+  const sorted = [...scored].sort((a, b) => b.score - a.score)
 
   const maxScore = sorted[0]?.score ?? 0
   const entries: RankEntry[] = []
@@ -262,6 +309,28 @@ function getTop3(
   }
 
   return { entries, maxScore }
+}
+
+function getUserRankEntry(
+  uid: string,
+  eligibleUsers: UserProfile[],
+  getValue: (s: UserStats) => number,
+  formatLabel: (n: number) => string,
+  statsMap: Map<string, UserStats>,
+): RankEntry | undefined {
+  if (!eligibleUsers.some(u => u.uid === uid)) return undefined
+  const scored = eligibleUsers.map(u => ({ uid: u.uid, score: getValue(statsMap.get(u.uid) ?? EMPTY_STATS) }))
+  return rankOfUser(uid, scored, formatLabel)
+}
+
+function getTop3(
+  users: UserProfile[],
+  getValue: (s: UserStats) => number,
+  formatLabel: (n: number) => string,
+  statsMap: Map<string, UserStats>,
+): { entries: RankEntry[]; maxScore: number } {
+  const scored = users.map(u => ({ uid: u.uid, score: getValue(statsMap.get(u.uid) ?? EMPTY_STATS) }))
+  return rankTop3(scored, formatLabel)
 }
 
 export function computeLeaderboard(
@@ -314,15 +383,6 @@ export function computeLeaderboard(
 
 // ── Beast Score breakdown ────────────────────────────────────────────────────
 
-export type BreakdownChip = { text: string; color: 'green' | 'red' | 'orange' | 'gray' }
-
-export interface BreakdownLine {
-  label: string
-  parts?: BreakdownChip[]
-  pts: number
-  isBonus?: boolean
-}
-
 export interface WeekBreakdown {
   label: string
   total: number
@@ -360,16 +420,9 @@ export function computeBeastBreakdown(
   const currentWeekStart = weekStart(today)
   const currentWeekEnd = weekEnd(today)
 
-  const postDaySet = new Set<string>()
-  const currentWeekPostDaySet = new Set<string>()
-  for (const p of allPosts.filter(p => p.userId === uid)) {
-    if (!p.createdAt) continue
-    const dateStr = toETDateString(p.createdAt.toDate())
-    if (dateStr >= '2026-06-01' && dateStr <= '2026-06-30') postDaySet.add(dateStr)
-    if (dateStr >= currentWeekStart && dateStr <= currentWeekEnd) currentWeekPostDaySet.add(dateStr)
-  }
-  const postDays = postDaySet.size
+  const postDays = postDaysInRange(uid, allPosts, '2026-06-01', '2026-06-30')
   const postPts = postDays * 2
+  const currentWeekPostDays = postDaysInRange(uid, allPosts, currentWeekStart, currentWeekEnd)
 
   let totalScore = postPts
   let currentWeekBaseScore = 0
@@ -377,78 +430,98 @@ export function computeBeastBreakdown(
 
   for (const week of JUNE_WEEKS) {
     if (week.start > today) break
-    const weekDone = week.end <= today
     const elapsed = daysInWeek(week, today)
     if (elapsed.length === 0) continue
 
-    const lines: BreakdownLine[] = []
-    let weekPts = 0
-
-    // Daily goals (today is not penalized — unless today is the week's last day,
-    // in which case the week is scored as "done" and today counts like any other day)
-    let perfectDailyWeek = dailyGoals.length > 0
-    for (const goal of dailyGoals) {
-      let done = 0, missed = 0
-      for (const date of elapsed) {
-        if (comps.some(c => c.goalId === goal.id && c.date === date)) done++
-        else if (date < today || (date === today && weekDone)) missed++
-      }
-      if (missed > 0) perfectDailyWeek = false
-      const pts = done * 2 - missed
-      weekPts += pts
-      const parts: BreakdownChip[] = []
-      if (done > 0) parts.push({ text: `${done} done`, color: 'green' })
-      if (missed > 0) parts.push({ text: `${missed} missed`, color: 'red' })
-      lines.push({ label: goal.title, parts, pts })
-    }
-    if (perfectDailyWeek && weekDone) {
-      weekPts += 10
-      lines.push({ label: 'Perfect daily week', pts: 10, isBonus: true })
-    }
-
-    // Weekly goals
-    let allWeeklyMet = weeklyGoals.length > 0
-    for (const goal of weeklyGoals) {
-      const count = comps.filter(
-        c => c.goalId === goal.id && c.date >= week.start && c.date <= week.end
-      ).length
-      const effective = Math.min(count, goal.frequency.daysPerWeek)
-      const basePts = effective * 3
-      let quotaBonus = 0, penalty = 0
-      if (count >= goal.frequency.daysPerWeek) {
-        quotaBonus = 5
-      } else {
-        allWeeklyMet = false
-        if (weekDone) penalty = (goal.frequency.daysPerWeek - count) * 2
-      }
-      const pts = basePts + quotaBonus - penalty
-      weekPts += pts
-      const parts: BreakdownChip[] = []
-      parts.push({ text: `${effective}/${goal.frequency.daysPerWeek} sessions`, color: count >= goal.frequency.daysPerWeek ? 'green' : 'orange' })
-      if (quotaBonus > 0) parts.push({ text: 'quota bonus', color: 'orange' })
-      if (penalty > 0) parts.push({ text: `${goal.frequency.daysPerWeek - count} missed`, color: 'red' })
-      lines.push({
-        label: `${goal.title} (${goal.frequency.daysPerWeek}×/wk)`,
-        parts,
-        pts,
-      })
-    }
-    if (allWeeklyMet) {
-      weekPts += 10
-      lines.push({ label: 'All weekly goals met', pts: 10, isBonus: true })
-    }
-
-    if (weekDone && dailyGoals.length > 0 && weeklyGoals.length > 0 && perfectDailyWeek && allWeeklyMet) {
-      weekPts += 25
-      lines.push({ label: 'Beast Week', pts: 25, isBonus: true })
-    }
-
+    const { weekPts, weekDone, lines } = computeWeekScore(week, dailyGoals, weeklyGoals, comps, today)
     totalScore += weekPts
     if (week.start === currentWeekStart) currentWeekBaseScore = weekPts
     weeks.push({ label: formatWeekLabel(week), total: weekPts, weekDone, lines })
   }
 
-  const currentWeekScore = Math.max(0, currentWeekBaseScore + currentWeekPostDaySet.size * 2)
+  const currentWeekScore = Math.max(0, currentWeekBaseScore + currentWeekPostDays * 2)
 
   return { totalScore, currentWeekScore, weeks, postDays, postPts }
+}
+
+// ── Beast Score trophy archive — past completed weeks' top 3 + your rank ────────
+
+export interface WeekArchiveEntry {
+  weekIndex: number
+  label: string
+  entries: RankEntry[]
+  myEntry?: RankEntry
+}
+
+const beastPts = (n: number) => `${n} pt${n !== 1 ? 's' : ''}`
+
+// Returns one entry per fully-completed week before the current one (most recent first),
+// each ranking every user by THAT week's Beast Score alone — a snapshot of who was on
+// top before the score reset for the next week.
+export function computeBeastArchive(
+  users: UserProfile[],
+  allGoals: Goal[],
+  allCompletions: Completion[],
+  allPosts: Post[],
+  today: string,
+  currentUserId?: string,
+): WeekArchiveEntry[] {
+  const currentWeekStart = weekStart(today)
+  const archive: WeekArchiveEntry[] = []
+
+  for (let weekIndex = 0; weekIndex < JUNE_WEEKS.length; weekIndex++) {
+    const week = JUNE_WEEKS[weekIndex]
+    if (week.start >= currentWeekStart) break
+
+    const scored: ScoredUser[] = users.map(u => {
+      const goals = allGoals.filter(g => g.userId === u.uid)
+      const comps = allCompletions.filter(c => c.userId === u.uid)
+      const dailyGoals = goals.filter(g => g.frequency.type === 'daily')
+      const weeklyGoals = goals.filter(g => g.frequency.type === 'weekly')
+      const { weekPts } = computeWeekScore(week, dailyGoals, weeklyGoals, comps, today)
+      const postPts = postDaysInRange(u.uid, allPosts, week.start, week.end) * 2
+      return { uid: u.uid, score: Math.max(0, weekPts + postPts) }
+    })
+
+    const { entries } = rankTop3(scored, beastPts)
+    let myEntry: RankEntry | undefined
+    if (currentUserId && !entries.some(e => e.uid === currentUserId)) {
+      myEntry = rankOfUser(currentUserId, scored, beastPts)
+    }
+
+    archive.push({ weekIndex, label: formatWeekLabel(week), entries, myEntry })
+  }
+
+  return archive.reverse()
+}
+
+export interface WeekOnlyBreakdown {
+  label: string
+  total: number
+  lines: BreakdownLine[]
+  postDays: number
+  postPts: number
+}
+
+// Single-week version of computeBeastBreakdown — for drilling into a contestant's
+// score for one specific past week from the trophy archive.
+export function computeWeekOnlyBreakdown(
+  uid: string,
+  weekIndex: number,
+  allGoals: Goal[],
+  allCompletions: Completion[],
+  allPosts: Post[],
+  today: string,
+): WeekOnlyBreakdown {
+  const week = JUNE_WEEKS[weekIndex]
+  const goals = allGoals.filter(g => g.userId === uid)
+  const comps = allCompletions.filter(c => c.userId === uid)
+  const dailyGoals = goals.filter(g => g.frequency.type === 'daily')
+  const weeklyGoals = goals.filter(g => g.frequency.type === 'weekly')
+
+  const { weekPts, lines } = computeWeekScore(week, dailyGoals, weeklyGoals, comps, today)
+  const postDays = postDaysInRange(uid, allPosts, week.start, week.end)
+  const postPts = postDays * 2
+
+  return { label: formatWeekLabel(week), total: Math.max(0, weekPts + postPts), lines, postDays, postPts }
 }
