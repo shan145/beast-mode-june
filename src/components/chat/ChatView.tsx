@@ -9,6 +9,15 @@ const WORKER_URL = (import.meta.env.VITE_WORKER_URL as string | undefined)?.repl
 
 const LAST_READ_KEY = 'chat_last_read'
 
+function formatMessageTimestamp(sentAt: string): string {
+  return new Date(sentAt).toLocaleString([], {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
 function getLastRead(): Record<string, string> {
   try { return JSON.parse(localStorage.getItem(LAST_READ_KEY) ?? '{}') } catch { return {} }
 }
@@ -99,7 +108,7 @@ function MessageBubble({
   showHeader: boolean
   showTime: boolean
 }) {
-  const time = new Date(msg.sentAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  const time = formatMessageTimestamp(msg.sentAt)
 
   if (isMe) {
     return (
@@ -693,7 +702,7 @@ function RoomList({
                   </span>
                   {lastMsg && (
                     <span className="text-[10px] text-gray-400 dark:text-gray-500 flex-shrink-0">
-                      {new Date(lastMsg.sentAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                      {formatMessageTimestamp(lastMsg.sentAt)}
                     </span>
                   )}
                 </div>
