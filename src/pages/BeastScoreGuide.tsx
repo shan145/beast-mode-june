@@ -83,8 +83,9 @@ const QAS: QA[] = [
       <div className="space-y-3 text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
         <p>
           The Beast Score is a <strong>weekly</strong> scoring system that measures how consistently you
-          stick to your commitments. Points are calculated week-by-week (Sun–Sat), then summed across
-          all of June.
+          stick to your commitments. Points are calculated for the current Sun–Sat week only — your
+          score <strong>resets to 0 at the start of every week</strong>, so each week is a fresh chance
+          to climb the leaderboard.
         </p>
         <p>
           Unlike simply counting completions, the Beast Score <strong>rewards consistency</strong> and
@@ -295,11 +296,12 @@ const QAS: QA[] = [
     a: (
       <div className="space-y-3">
         <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <RuleRow pts="+2 pts" label="per unique day you post to the feed (max 1 credit per day)" />
+          <RuleRow pts="+2 pts" label="per unique day you post to the feed this week (max 1 credit per day)" />
         </div>
         <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-          Posting multiple times on the same day still counts as 1 day. 30 post days over June = +60 pts.
-          There's no penalty for not posting.
+          Posting multiple times on the same day still counts as 1 day. Like the rest of your Beast
+          Score, feed points are scoped to the current week — 5 post days this week = +10 pts, then
+          it resets next week. There's no penalty for not posting.
         </p>
       </div>
     ),
@@ -309,11 +311,12 @@ const QAS: QA[] = [
     q: 'What about the current (in-progress) week?',
     a: (
       <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-        During an active week, daily miss penalties and weekly goal shortfall penalties are <strong>not</strong> applied yet —
-        you still have time to make them up. Completions earn points in real time. End-of-week bonuses
-        (Perfect Daily Week, BEAST WEEK) are only awarded once Saturday has passed.
-        Weekly quota bonuses (+5 per goal) are awarded as soon as you hit the quota mid-week, since
-        completions are permanent.
+        The score shown on the leaderboard is always for the <strong>current week only</strong> — it
+        resets to 0 every Sunday morning. During an active week, daily miss penalties and weekly goal
+        shortfall penalties are <strong>not</strong> applied yet — you still have time to make them up.
+        Completions earn points in real time. End-of-week bonuses (Perfect Daily Week, BEAST WEEK) are
+        only awarded once Saturday has passed. Weekly quota bonuses (+5 per goal) are awarded as soon
+        as you hit the quota mid-week, since completions are permanent.
       </p>
     ),
   },

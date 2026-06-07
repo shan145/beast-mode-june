@@ -173,7 +173,7 @@ export default function Leaderboard({ users, allGoals, allCompletions, allPosts,
                   </svg>
                   How points are calculated
                 </button>
-                <p className="text-orange-100/60 text-xs">Tap a row to see their score breakdown</p>
+                <p className="text-orange-100/60 text-xs">Resets every week · tap a row for the breakdown</p>
               </div>
             ) : (
               <p className="text-orange-100 text-xs mt-0.5">{metric.description}</p>
@@ -387,7 +387,8 @@ function BeastBreakdownModal({ name, breakdown, onClose }: {
         <div className="bg-gradient-to-r from-orange-500 to-amber-400 dark:from-orange-900 dark:to-amber-800 px-5 py-4 flex items-center justify-between shrink-0">
           <div>
             <p className="font-bold text-white text-base">{name}'s Beast Score</p>
-            <p className="text-orange-100 text-sm font-semibold">{breakdown.totalScore} pts total</p>
+            <p className="text-orange-100 text-sm font-semibold">{breakdown.currentWeekScore} pts this week</p>
+            <p className="text-orange-100/60 text-xs">{breakdown.totalScore} pts total across June</p>
           </div>
           <button onClick={onClose} className="text-white/70 hover:text-white transition">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
