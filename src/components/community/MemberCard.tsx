@@ -1,13 +1,17 @@
 import { useState } from 'react'
 import type { UserProfile } from '@/types'
 import { sendNotification } from '@/lib/pushNotifications'
+import { addKudos } from '@/lib/firestore'
 import { auth } from '@/lib/firebase'
+import { todayET } from '@/lib/time'
 
 interface Props {
   member: UserProfile
   isYou?: boolean
   allDailyDoneToday?: boolean
   anyCompletionToday?: boolean
+  beastSentToday?: boolean
+  celebrationSentToday?: boolean
   currentUserName?: string
   onClick: () => void
 }
@@ -25,32 +29,42 @@ function initials(name: string): string {
   return name.split(' ').filter(Boolean).map(n => n[0]).join('').toUpperCase().slice(0, 2)
 }
 
-export default function MemberCard({ member, isYou, allDailyDoneToday, anyCompletionToday, currentUserName, onClick }: Props) {
+export default function MemberCard({ member, isYou, allDailyDoneToday, anyCompletionToday, beastSentToday, celebrationSentToday, currentUserName, onClick }: Props) {
   const color = avatarColor(member.uid)
   const abbr = initials(member.displayName || member.email)
-  const [sent, setSent] = useState(false)
-  const [celebSent, setCelebSent] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [celebSending, setCelebSending] = useState(false)
+  const sent = beastSentToday || sending
+  const celebSent = celebrationSentToday || celebSending
 
   async function handleBeast(e: React.MouseEvent) {
     e.stopPropagation()
     const currentUser = auth.currentUser
-    if (!currentUser) return
-    setSent(true)
+    if (!currentUser || sent) return
+    setSending(true)
     const fromName = currentUserName ?? currentUser.displayName ?? 'Someone'
     const toName = member.displayName || member.email || 'Someone'
     sendNotification('gift-sent', { userName: fromName, toName, toUserId: member.uid, fromUserId: currentUser.uid }, { recipientIds: [member.uid] })
-    setTimeout(() => setSent(false), 1500)
+    try {
+      await addKudos(currentUser.uid, member.uid, 'beast', todayET())
+    } catch {
+      setSending(false)
+    }
   }
 
   async function handleCelebration(e: React.MouseEvent) {
     e.stopPropagation()
     const currentUser = auth.currentUser
-    if (!currentUser) return
-    setCelebSent(true)
+    if (!currentUser || celebSent) return
+    setCelebSending(true)
     const fromName = currentUserName ?? currentUser.displayName ?? 'Someone'
     const toName = member.displayName || member.email || 'Someone'
     sendNotification('celebration-sent', { userName: fromName, toName, toUserId: member.uid, fromUserId: currentUser.uid }, { recipientIds: [member.uid] })
-    setTimeout(() => setCelebSent(false), 1500)
+    try {
+      await addKudos(currentUser.uid, member.uid, 'celebration', todayET())
+    } catch {
+      setCelebSending(false)
+    }
   }
 
   return (

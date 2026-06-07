@@ -60,6 +60,7 @@ export interface Kudos {
   id: string
   fromUserId: string
   toUserId: string
+  type: 'beast' | 'celebration'
   date: string        // "YYYY-MM-DD" Eastern Time — the day the recipient completed all tasks
   createdAt: Timestamp | null
 }

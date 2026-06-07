@@ -8,6 +8,7 @@ import { useAllGoals } from '@/hooks/useAllGoals'
 import { useAllCompletions } from '@/hooks/useAllCompletions'
 import { usePosts } from '@/hooks/usePosts'
 import { useUser } from '@/hooks/useUser'
+import { useKudosSentToday } from '@/hooks/useKudosSentToday'
 import { deleteGoal } from '@/lib/firestore'
 import { useTheme } from '@/contexts/ThemeContext'
 
@@ -103,6 +104,7 @@ export default function Dashboard() {
   const { completions: allCompletions } = useAllCompletions()
   const { posts: allPosts } = usePosts()
   const { user: ownProfile } = useUser(firebaseUser?.uid)
+  const { hasSent: hasSentKudos } = useKudosSentToday(firebaseUser?.uid)
 
   const sortedMembers = [...users].sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''))
 
@@ -313,6 +315,8 @@ export default function Dashboard() {
                             isYou={member.uid === firebaseUser?.uid}
                             allDailyDoneToday={allDailyDoneTodayByUser[member.uid]}
                             anyCompletionToday={anyCompletionTodayByUser[member.uid]}
+                            beastSentToday={hasSentKudos(member.uid, 'beast')}
+                            celebrationSentToday={hasSentKudos(member.uid, 'celebration')}
                             currentUserName={ownProfile?.displayName}
                             onClick={() => navigate(`/member/${member.uid}`)}
                           />
