@@ -696,6 +696,8 @@ function BeastBreakdownModal({ name, breakdown, onClose }: {
   breakdown: BeastBreakdown
   onClose: () => void
 }) {
+  const currentWeek = breakdown.weeks[breakdown.weeks.length - 1] ?? null
+
   return (
     <div
       className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-end sm:items-center justify-center z-50 p-4"
@@ -710,7 +712,6 @@ function BeastBreakdownModal({ name, breakdown, onClose }: {
           <div>
             <p className="font-bold text-white text-base">{name}'s Beast Score</p>
             <p className="text-orange-100 text-sm font-semibold">{breakdown.currentWeekScore} pts this week</p>
-            <p className="text-orange-100/60 text-xs">{breakdown.totalScore} pts total across June</p>
           </div>
           <button onClick={onClose} className="text-white/70 hover:text-white transition">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -721,30 +722,15 @@ function BeastBreakdownModal({ name, breakdown, onClose }: {
 
         {/* Scrollable body */}
         <div className="overflow-y-auto flex-1 p-4 space-y-3">
-          {breakdown.weeks.length === 0 && (
+          {!currentWeek ? (
             <p className="text-center text-gray-400 dark:text-gray-500 text-sm py-6">No goals set up yet.</p>
-          )}
-
-          {breakdown.weeks.map(week => (
-            <div key={week.label} className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4">
-              {/* Week header */}
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <p className="font-semibold text-gray-800 dark:text-white text-sm">{week.label}</p>
-                  <span className={`text-xs font-medium ${week.weekDone ? 'text-green-500 dark:text-green-400' : 'text-orange-400'}`}>
-                    {week.weekDone ? 'Completed' : 'In Progress'}
-                  </span>
-                </div>
-                <span className={`text-sm font-bold tabular-nums ${week.total >= 0 ? 'text-gray-700 dark:text-gray-200' : 'text-red-400'}`}>
-                  {week.total >= 0 ? `+${week.total}` : week.total} pts
-                </span>
-              </div>
-
-              {week.lines.length === 0 ? (
+          ) : (
+            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4">
+              {currentWeek.lines.length === 0 ? (
                 <p className="text-xs text-gray-400 dark:text-gray-500">No goals this week</p>
               ) : (
                 <div className="space-y-2">
-                  {week.lines.map((line, i) => (
+                  {currentWeek.lines.map((line, i) => (
                     <div
                       key={i}
                       className={`flex items-start gap-2 ${line.isBonus ? 'pt-2 mt-1 border-t border-gray-200 dark:border-gray-700' : ''}`}
@@ -773,19 +759,19 @@ function BeastBreakdownModal({ name, breakdown, onClose }: {
                 </div>
               )}
             </div>
-          ))}
+          )}
 
-          {/* Feed posts */}
-          {breakdown.postDays > 0 && (
+          {/* Feed posts (current week only) */}
+          {breakdown.currentWeekPostDays > 0 && (
             <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-800 dark:text-gray-100">Feed posts</p>
                 <p className="text-xs text-gray-400 dark:text-gray-500">
-                  {breakdown.postDays} day{breakdown.postDays !== 1 ? 's' : ''} × +2
+                  {breakdown.currentWeekPostDays} day{breakdown.currentWeekPostDays !== 1 ? 's' : ''} × +2
                 </p>
               </div>
               <span className="text-sm font-bold text-green-500 dark:text-green-400 tabular-nums">
-                +{breakdown.postPts}
+                +{breakdown.currentWeekPostPts}
               </span>
             </div>
           )}
