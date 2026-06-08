@@ -396,6 +396,8 @@ export interface BeastBreakdown {
   weeks: WeekBreakdown[]
   postDays: number
   postPts: number
+  currentWeekPostDays: number
+  currentWeekPostPts: number
 }
 
 function formatWeekLabel(week: { start: string; end: string }): string {
@@ -440,8 +442,9 @@ export function computeBeastBreakdown(
   }
 
   const currentWeekScore = Math.max(0, currentWeekBaseScore + currentWeekPostDays * 2)
+  const currentWeekPostPts = currentWeekPostDays * 2
 
-  return { totalScore, currentWeekScore, weeks, postDays, postPts }
+  return { totalScore, currentWeekScore, weeks, postDays, postPts, currentWeekPostDays, currentWeekPostPts }
 }
 
 // ── Beast Score trophy archive — past completed weeks' top 3 + your rank ────────
